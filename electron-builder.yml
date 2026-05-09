@@ -28,7 +28,7 @@ mac:
       arch: [arm64, x64]
     - target: zip
       arch: [arm64, x64]
-  # icon: build/icon.icns  # Re-enable once a real icon ships in build/
+  icon: build/icon.icns
   # Skip code signing entirely until the Apple Developer Program is wired in.
   # `identity: null` tells electron-builder to not even try — without this and
   # without CSC_LINK, the signer falls through to a cwd path lookup and errors
