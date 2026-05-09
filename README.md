@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src=".github/assets/logo.png" alt="Snapora" width="120" />
+<img src=".github/assets/logo.svg" alt="Snapora" width="120" />
 
 # Snapora
 
@@ -21,9 +21,11 @@ A community-built, MIT-licensed alternative to [CleanShot X](https://cleanshot.c
 
 ---
 
+<!-- TODO: drop a demo recording into .github/assets/demo.gif and re-enable the block below.
 <div align="center">
   <img src=".github/assets/demo.gif" alt="Snapora demo — capture, annotate, share" width="800" />
 </div>
+-->
 
 ## Why Snapora?
 

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Snapora">
+  <rect x="0" y="0" width="256" height="256" rx="56" fill="#0f172a"/>
+  <g stroke="#f59e0b" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M70 96 L70 70 L96 70"/>
+    <path d="M160 70 L186 70 L186 96"/>
+    <path d="M186 160 L186 186 L160 186"/>
+    <path d="M96 186 L70 186 L70 160"/>
+  </g>
+  <circle cx="128" cy="128" r="10" fill="#f59e0b"/>
+</svg>
