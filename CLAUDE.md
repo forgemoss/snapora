@@ -55,6 +55,14 @@ npm run dist        # build + DMG (signed if Apple secrets present)
 6. Push, open PR against `main`, wait for CI green, squash merge.
 7. CHANGELOG.md is maintained by maintainers — don't edit it in feature PRs.
 
+## Working with Claude
+
+For any feature or bug-fix task, Claude should:
+
+1. **Pick the branch.** Propose a name matching the convention (`feat/<area>-<description>` / `fix/...` / `docs/...` / `chore/...`) and create it — don't ask the user to name it.
+2. **Stage commits on that branch.** Conventional Commits, scoped (`feat(brand): ...`).
+3. **End every task with a "Next steps" block** — the explicit commands or actions the user needs to run (push, open PR, tag, merge, etc.). Never leave the user guessing what to do after the code is written.
+
 ## Tooling specific to this project
 
 - `.claude/agents/electron-troubleshooter.md` — debugging Electron-specific runtime/build issues
