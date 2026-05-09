@@ -10,6 +10,7 @@ import { showHudWithImage } from '@main/windows/hud';
 import { markFirstRunDone, relaunchApp } from '@main/windows/firstRun';
 import { chooseSaveDirectory } from '@main/windows/settings';
 import { registerHistoryHandlers } from '@main/ipc/historyHandlers';
+import { registerSelectionHandlers } from '@main/selection/overlay';
 import { registerGlobalShortcuts } from '@main/shortcuts/index';
 import { registerHudHandlers } from '@main/ipc/hudHandlers';
 import { IPC } from '@shared/ipc';
@@ -59,6 +60,7 @@ export function registerIpcHandlers(): void {
 
   registerHudHandlers();
   registerHistoryHandlers();
+  registerSelectionHandlers();
 
   ipcMain.handle(IPC.firstRun.markDone, () => markFirstRunDone());
   ipcMain.handle(IPC.firstRun.relaunch, () => relaunchApp());

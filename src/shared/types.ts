@@ -2,6 +2,18 @@ export type CaptureMode = 'area' | 'window' | 'fullscreen';
 
 export type CaptureFormat = 'png' | 'jpg';
 
+/**
+ * A rectangle in global DIPs (display-independent pixels), the same unit
+ * `screencapture -R` accepts and `electron.screen.getAllDisplays()[i].bounds`
+ * reports. Origin is top-left of the primary display.
+ */
+export interface SelectionRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface CaptureOptions {
   mode: CaptureMode;
   format?: CaptureFormat;
@@ -13,6 +25,12 @@ export interface CaptureOptions {
   hideDesktopIcons?: boolean;
   /** Suppress the macOS shutter sound. Default true. Set to false to play it. */
   silent?: boolean;
+  /**
+   * Pre-resolved rectangle to capture. When set, bypasses `screencapture -i`
+   * and uses `-R x,y,w,h` directly. Used by the homegrown selection overlay
+   * (and by "Capture Previous Area" once that ships in PR2).
+   */
+  region?: SelectionRect;
 }
 
 export interface CaptureResult {
@@ -57,6 +75,14 @@ export interface AppPreferences {
   hideDesktopIcons: boolean;
   /** Delay before a full-screen capture fires (gives you time to set up). 0 = no timer. */
   selfTimerSeconds: 0 | 3 | 5 | 10;
+  /**
+   * Route "Capture Area" through Snapora's homegrown selection overlay
+   * (transparent fullscreen window per display) instead of `screencapture -i`.
+   * Default true. Kept as a flag for one release as a safety valve in case
+   * the overlay misbehaves on user setups we haven't tested. Slated for
+   * removal in v0.3 once recording (v0.4) also uses the overlay.
+   */
+  useCustomSelectionOverlay: boolean;
 
   // ----- Shortcuts -----
   /** Global hotkey strings (Electron accelerator format) per capture mode. */
@@ -73,6 +99,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   autoCopyToClipboard: true,
   hideDesktopIcons: false,
   selfTimerSeconds: 0,
+  useCustomSelectionOverlay: true,
   hotkeys: {
     area: 'CommandOrControl+Shift+2',
     window: 'CommandOrControl+Shift+3',

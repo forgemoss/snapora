@@ -6,13 +6,30 @@ import type {
   CaptureResult,
   Permission,
   PermissionState,
+  SelectionRect,
 } from '@shared/types';
-import type { SnaporaApi } from '@shared/ipc';
+import type { SelectionInitPayload, SnaporaApi } from '@shared/ipc';
 
 const api: SnaporaApi = {
   capture: (options: CaptureOptions): Promise<CaptureResult> =>
     ipcRenderer.invoke(IPC.capture.start, options),
   cancelCapture: (): Promise<void> => ipcRenderer.invoke(IPC.capture.cancel),
+  selection: {
+    onInit: (handler: (init: SelectionInitPayload) => void) => {
+      const listener = (_evt: unknown, init: SelectionInitPayload): void => handler(init);
+      ipcRenderer.on(IPC.selection.init, listener);
+      return () => ipcRenderer.removeListener(IPC.selection.init, listener);
+    },
+    request: (): Promise<SelectionInitPayload | null> => ipcRenderer.invoke(IPC.selection.request),
+    commit: (displayId: number, rect: SelectionRect): Promise<void> => {
+      ipcRenderer.send(IPC.selection.commit, { displayId, rect });
+      return Promise.resolve();
+    },
+    cancel: (): Promise<void> => {
+      ipcRenderer.send(IPC.selection.cancel);
+      return Promise.resolve();
+    },
+  },
   permissions: {
     list: (): Promise<PermissionState[]> => ipcRenderer.invoke(IPC.permissions.list),
     request: (p: Permission): Promise<PermissionState> =>

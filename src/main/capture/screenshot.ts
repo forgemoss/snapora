@@ -3,8 +3,10 @@ import { mkdir, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { app, clipboard, nativeImage } from 'electron';
 import logger from '@main/logger';
+import { pickRegion } from '@main/selection/overlay';
+import { getPreferences } from '@main/storage/prefs';
 import { insertCapture } from '@main/storage/db';
-import type { CaptureMode, CaptureOptions, CaptureResult } from '@shared/types';
+import type { CaptureMode, CaptureOptions, CaptureResult, SelectionRect } from '@shared/types';
 
 const SCREENCAPTURE_BIN = '/usr/sbin/screencapture';
 
@@ -14,20 +16,30 @@ const SCREENCAPTURE_BIN = '/usr/sbin/screencapture';
  * Reference: `man screencapture`. Flags we use:
  *   -i  interactive (mouse selection)
  *   -W  start in window-selection mode (only with -i)
+ *   -R  rect x,y,w,h in DIPs (skips -i; we drove our own selection)
  *   -t  format (png|jpg|...)
  *   -o  do not include window shadow when in window mode
  *   -x  do not play sound
  *   -T  delay in seconds before capture (full-screen only)
  */
-function buildArgs(
+export function buildArgs(
   mode: CaptureMode,
   format: 'png' | 'jpg',
   delaySeconds: number,
   outFile: string,
   silent: boolean,
-) {
+  region?: SelectionRect,
+): string[] {
   // -x silences the shutter sound; omit it when the user wants the sound.
   const args: string[] = silent ? ['-x', '-t', format] : ['-t', format];
+
+  // When we already know the rect (from our overlay or "previous area"),
+  // -R replaces the interactive HUD entirely.
+  if (region) {
+    args.push('-R', `${region.x},${region.y},${region.width},${region.height}`);
+    args.push(outFile);
+    return args;
+  }
 
   switch (mode) {
     case 'area':
@@ -59,6 +71,23 @@ function timestampedFilename(format: 'png' | 'jpg'): string {
 }
 
 export async function takeScreenshot(options: CaptureOptions): Promise<CaptureResult> {
+  // For "area" mode, route through our homegrown overlay when the pref is on.
+  // The overlay returns a global-DIP rect that we hand to `screencapture -R`.
+  let region = options.region;
+  if (!region && options.mode === 'area' && getPreferences().useCustomSelectionOverlay) {
+    const result = await pickRegion();
+    if (result.cancelled || !result.rect) {
+      return {
+        filePath: null,
+        capturedAt: new Date().toISOString(),
+        width: null,
+        height: null,
+        cancelled: true,
+      };
+    }
+    region = result.rect;
+  }
+
   const format: 'png' | 'jpg' = options.format ?? 'png';
   const saveDir = defaultSaveDir();
   await mkdir(saveDir, { recursive: true });
@@ -68,7 +97,7 @@ export async function takeScreenshot(options: CaptureOptions): Promise<CaptureRe
   const delaySeconds = Math.max(0, Math.round((options.delayMs ?? 0) / 1000));
   // Default silent unless the user explicitly opts in via prefs (handled by callers).
   const silent = options.silent !== false;
-  const args = buildArgs(options.mode, format, delaySeconds, outFile, silent);
+  const args = buildArgs(options.mode, format, delaySeconds, outFile, silent, region);
 
   logger.info('capture: spawning screencapture', { args });
 

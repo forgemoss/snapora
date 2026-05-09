@@ -4,7 +4,21 @@ import type {
   CaptureResult,
   PermissionState,
   AppPreferences,
+  SelectionRect,
 } from './types';
+
+/**
+ * Per-overlay init payload. The main process sends one of these to each
+ * selection overlay window so the renderer can map local CSS coords to
+ * global DIPs without round-tripping for every mouse event.
+ */
+export interface SelectionInitPayload {
+  displayId: number;
+  /** Display bounds in DIPs (top-left origin = primary display top-left). */
+  bounds: { x: number; y: number; width: number; height: number };
+  scaleFactor: number;
+  isPrimary: boolean;
+}
 
 export interface HistoryItem {
   id: number;
@@ -24,6 +38,16 @@ export const IPC = {
   capture: {
     start: 'capture:start',
     cancel: 'capture:cancel',
+  },
+  selection: {
+    /** main → renderer (per-overlay): SelectionInitPayload */
+    init: 'selection:init',
+    /** renderer → main: re-request the init payload after `did-finish-load` */
+    request: 'selection:request',
+    /** renderer → main: { displayId, rect } — user committed a region */
+    commit: 'selection:commit',
+    /** renderer → main: ESC pressed or click without drag */
+    cancel: 'selection:cancel',
   },
   permissions: {
     list: 'permissions:list',
@@ -72,6 +96,14 @@ export const IPC = {
 export interface SnaporaApi {
   capture(options: CaptureOptions): Promise<CaptureResult>;
   cancelCapture(): Promise<void>;
+  selection: {
+    /** Subscribe to per-window init payload. Returns an unsubscribe fn. */
+    onInit(handler: (init: SelectionInitPayload) => void): () => void;
+    /** Pull the init payload synchronously after mount. */
+    request(): Promise<SelectionInitPayload | null>;
+    commit(displayId: number, rect: SelectionRect): Promise<void>;
+    cancel(): Promise<void>;
+  };
   permissions: {
     list(): Promise<PermissionState[]>;
     request(permission: PermissionState['permission']): Promise<PermissionState>;

@@ -45,6 +45,7 @@ export default defineConfig({
           firstRun: resolve('src/renderer/first-run.html'),
           hud: resolve('src/renderer/hud.html'),
           history: resolve('src/renderer/history.html'),
+          selection: resolve('src/renderer/selection.html'),
         },
       },
     },
