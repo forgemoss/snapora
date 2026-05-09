@@ -4,6 +4,7 @@ import logger from '@main/logger';
 import { takeScreenshot } from '@main/capture/screenshot';
 import { openEditorEmpty } from '@main/windows/editor';
 import { showHudWithImage } from '@main/windows/hud';
+import { openSettingsWindow } from '@main/windows/settings';
 import { getPreferences } from '@main/storage/prefs';
 import type { CaptureMode } from '@shared/types';
 
@@ -66,7 +67,11 @@ export function rebuildTrayMenu(): void {
     },
     { label: 'Check for Updates…', enabled: false, sublabel: 'v1.0' },
     { type: 'separator' },
-    { label: 'Settings…', accelerator: 'CommandOrControl+,', enabled: false, sublabel: 'v0.1' },
+    {
+      label: 'Settings…',
+      accelerator: 'CommandOrControl+,',
+      click: () => openSettingsWindow(),
+    },
     { label: `Snapora ${app.getVersion()}`, enabled: false },
     { label: 'Quit Snapora', accelerator: 'CommandOrControl+Q', role: 'quit' },
   ]);
@@ -81,6 +86,7 @@ async function runCapture(mode: CaptureMode): Promise<void> {
       format: prefs.defaultFormat,
       copyToClipboard: prefs.autoCopyToClipboard,
       saveToDisk: true,
+      silent: !prefs.soundOnCapture,
     });
     if (!result.cancelled && result.filePath) {
       showHudWithImage(result.filePath);

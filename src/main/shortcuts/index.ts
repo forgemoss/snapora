@@ -43,6 +43,7 @@ async function runCapture(mode: CaptureMode): Promise<void> {
       format: prefs.defaultFormat,
       copyToClipboard: prefs.autoCopyToClipboard,
       saveToDisk: true,
+      silent: !prefs.soundOnCapture,
     });
     if (!result.cancelled && result.filePath) {
       showHudWithImage(result.filePath);

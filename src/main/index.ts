@@ -8,6 +8,8 @@ import { installContentSecurityPolicy } from '@main/security/csp';
 // Importing this registers `snap://` as a privileged scheme.
 // The import must happen before app.whenReady — keep it at module top.
 import { registerSnapProtocol } from '@main/security/protocol';
+import { syncLoginItem } from '@main/storage/loginItem';
+import { getPreferences } from '@main/storage/prefs';
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -31,6 +33,7 @@ app.whenReady().then(() => {
   installContentSecurityPolicy();
   registerSnapProtocol();
   registerIpcHandlers();
+  syncLoginItem(getPreferences().launchAtLogin);
   createTray();
   registerGlobalShortcuts();
   maybeShowFirstRunWizard();

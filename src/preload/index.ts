@@ -24,6 +24,8 @@ const api: SnaporaApi = {
     get: (): Promise<AppPreferences> => ipcRenderer.invoke(IPC.preferences.get),
     set: (patch: Partial<AppPreferences>): Promise<AppPreferences> =>
       ipcRenderer.invoke(IPC.preferences.set, patch),
+    chooseSaveDirectory: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.preferences.chooseSaveDirectory),
   },
   editor: {
     onImageReady: (handler: (snapUrl: string) => void) => {

@@ -2,19 +2,24 @@ import { app, ipcMain } from 'electron';
 import logger from '@main/logger';
 import { takeScreenshot } from '@main/capture/screenshot';
 import { listPermissions, openSystemSettingsFor, requestPermission } from '@main/permissions/tcc';
+import { syncLoginItem } from '@main/storage/loginItem';
 import { getPreferences, setPreferences } from '@main/storage/prefs';
 import { getCurrentEditorImageUrl } from '@main/windows/editor';
 import { showHudWithImage } from '@main/windows/hud';
+import { chooseSaveDirectory } from '@main/windows/settings';
+import { registerGlobalShortcuts } from '@main/shortcuts/index';
 import { registerHudHandlers } from '@main/ipc/hudHandlers';
 import { IPC } from '@shared/ipc';
 import type { AppPreferences, CaptureOptions, Permission } from '@shared/types';
 
 export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.capture.start, async (_evt, options: CaptureOptions) => {
-    const result = await takeScreenshot(options);
+    const prefs = getPreferences();
+    const result = await takeScreenshot({
+      silent: !prefs.soundOnCapture,
+      ...options,
+    });
     if (!result.cancelled && result.filePath) {
-      // Post-capture: show the Quick Access HUD instead of opening the editor.
-      // The editor opens on demand from the HUD's "Edit" action.
       showHudWithImage(result.filePath);
     }
     return result;
@@ -32,10 +37,15 @@ export function registerIpcHandlers(): void {
     openSystemSettingsFor(p),
   );
 
+  ipcMain.handle(IPC.preferences.chooseSaveDirectory, () => chooseSaveDirectory());
   ipcMain.handle(IPC.preferences.get, () => getPreferences());
-  ipcMain.handle(IPC.preferences.set, (_evt, patch: Partial<AppPreferences>) =>
-    setPreferences(patch),
-  );
+  ipcMain.handle(IPC.preferences.set, (_evt, patch: Partial<AppPreferences>) => {
+    const next = setPreferences(patch);
+    // React to side-effecting prefs.
+    if ('launchAtLogin' in patch) syncLoginItem(next.launchAtLogin);
+    if ('hotkeys' in patch) registerGlobalShortcuts();
+    return next;
+  });
 
   ipcMain.handle(IPC.editor.requestCurrent, () => getCurrentEditorImageUrl());
 

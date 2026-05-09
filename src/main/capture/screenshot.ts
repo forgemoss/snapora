@@ -23,8 +23,10 @@ function buildArgs(
   format: 'png' | 'jpg',
   delaySeconds: number,
   outFile: string,
+  silent: boolean,
 ) {
-  const args: string[] = ['-x', '-t', format];
+  // -x silences the shutter sound; omit it when the user wants the sound.
+  const args: string[] = silent ? ['-x', '-t', format] : ['-t', format];
 
   switch (mode) {
     case 'area':
@@ -63,7 +65,9 @@ export async function takeScreenshot(options: CaptureOptions): Promise<CaptureRe
   await mkdir(dirname(outFile), { recursive: true });
 
   const delaySeconds = Math.max(0, Math.round((options.delayMs ?? 0) / 1000));
-  const args = buildArgs(options.mode, format, delaySeconds, outFile);
+  // Default silent unless the user explicitly opts in via prefs (handled by callers).
+  const silent = options.silent !== false;
+  const args = buildArgs(options.mode, format, delaySeconds, outFile, silent);
 
   logger.info('capture: spawning screencapture', { args });
 

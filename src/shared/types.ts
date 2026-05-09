@@ -11,6 +11,8 @@ export interface CaptureOptions {
   delayMs?: number;
   /** Hide desktop icons during capture. */
   hideDesktopIcons?: boolean;
+  /** Suppress the macOS shutter sound. Default true. Set to false to play it. */
+  silent?: boolean;
 }
 
 export interface CaptureResult {
@@ -34,25 +36,34 @@ export interface PermissionState {
 }
 
 export interface AppPreferences {
+  // ----- General -----
+  /** Launch Snapora when the Mac boots. */
+  launchAtLogin: boolean;
+  /** Play the macOS shutter sound when a capture happens. */
+  soundOnCapture: boolean;
+  /** Hide the Dock icon (menu-bar-only mode). v0.1 default: true. */
+  menuBarOnly: boolean;
   /** Folder where screenshots are saved. */
   saveDirectory: string;
   /** Default capture format. */
   defaultFormat: CaptureFormat;
   /** Copy to clipboard automatically after capture. */
   autoCopyToClipboard: boolean;
-  /** Open the editor automatically after capture. */
-  openEditorAfterCapture: boolean;
-  /** Hide the desktop icons by default during full-screen capture. */
+  /** Hide the desktop icons by default during full-screen capture. v0.2 — stubbed for now. */
   hideDesktopIcons: boolean;
+
+  // ----- Shortcuts -----
   /** Global hotkey strings (Electron accelerator format) per capture mode. */
   hotkeys: Record<CaptureMode, string>;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
+  launchAtLogin: false,
+  soundOnCapture: false,
+  menuBarOnly: true,
   saveDirectory: '', // resolved at runtime to ~/Pictures/Snapora
   defaultFormat: 'png',
   autoCopyToClipboard: true,
-  openEditorAfterCapture: true,
   hideDesktopIcons: false,
   hotkeys: {
     area: 'CommandOrControl+Shift+2',

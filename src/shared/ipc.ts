@@ -16,6 +16,7 @@ export const IPC = {
   preferences: {
     get: 'preferences:get',
     set: 'preferences:set',
+    chooseSaveDirectory: 'preferences:choose-save-directory',
   },
   editor: {
     onImageReady: 'editor:image-ready',
@@ -51,6 +52,7 @@ export interface SnaporaApi {
   preferences: {
     get(): Promise<AppPreferences>;
     set(patch: Partial<AppPreferences>): Promise<AppPreferences>;
+    chooseSaveDirectory(): Promise<string | null>;
   };
   editor: {
     onImageReady(handler: (snapUrl: string) => void): () => void;

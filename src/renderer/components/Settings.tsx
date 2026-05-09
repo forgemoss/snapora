@@ -1,33 +1,82 @@
-import { Settings as SettingsIcon } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Image, Info, Keyboard, SlidersHorizontal, Video, Wallpaper } from 'lucide-react';
+import { useState } from 'react';
 import { WindowChrome, WindowShell } from './Layout';
+import { cn } from '@renderer/lib/cn';
+import { AboutSettings } from './settings/About';
+import { GeneralSettings } from './settings/General';
+import { ShortcutsSettings } from './settings/Shortcuts';
+import { StubSection } from './settings/Stub';
 
-/**
- * Settings window placeholder. Real wiring lands in feat/settings (next milestone after first-run).
- */
+type SectionKey = 'general' | 'shortcuts' | 'screenshot' | 'recording' | 'wallpaper' | 'about';
+
+interface NavItem {
+  key: SectionKey;
+  label: string;
+  icon: React.ReactNode;
+  /** When set, the panel is a placeholder for that milestone. */
+  milestone?: string;
+}
+
+const NAV: NavItem[] = [
+  { key: 'general', label: 'General', icon: <SlidersHorizontal className="h-4 w-4" /> },
+  { key: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
+  {
+    key: 'screenshot',
+    label: 'Screenshot',
+    icon: <Image className="h-4 w-4" />,
+    milestone: 'v0.2',
+  },
+  { key: 'recording', label: 'Recording', icon: <Video className="h-4 w-4" />, milestone: 'v0.4' },
+  {
+    key: 'wallpaper',
+    label: 'Wallpaper',
+    icon: <Wallpaper className="h-4 w-4" />,
+    milestone: 'v0.5',
+  },
+  { key: 'about', label: 'About', icon: <Info className="h-4 w-4" /> },
+];
+
 export function Settings() {
+  const [active, setActive] = useState<SectionKey>('general');
+  const activeItem = NAV.find((n) => n.key === active);
+
   return (
     <WindowShell>
       <WindowChrome title="Settings" />
-      <main className="flex-1 overflow-auto p-8">
-        <div className="mx-auto max-w-2xl space-y-4">
-          <Card>
-            <CardHeader>
-              <SettingsIcon className="mt-0.5 h-5 w-5 text-white/50" />
-              <div>
-                <CardTitle>Settings — coming in v0.1</CardTitle>
-                <CardDescription>
-                  Hotkeys, save folder, default format, and capture behavior live here once the
-                  first-run flow lands.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-white/40">See ROADMAP.md → v0.1 for the build order.</p>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <div className="flex flex-1 overflow-hidden">
+        <nav className="w-44 shrink-0 border-r border-white/5 bg-white/[0.015] p-2">
+          {NAV.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setActive(item.key)}
+              className={cn(
+                'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition',
+                active === item.key
+                  ? 'bg-white/10 text-white/95'
+                  : 'text-white/65 hover:bg-white/5 hover:text-white/90',
+              )}
+            >
+              <span className="text-white/70">{item.icon}</span>
+              <span className="truncate">{item.label}</span>
+              {item.milestone ? (
+                <span className="ml-auto rounded-full bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-white/40">
+                  {item.milestone}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </nav>
+        <main className="flex-1 overflow-y-auto p-6">
+          {active === 'general' && <GeneralSettings />}
+          {active === 'shortcuts' && <ShortcutsSettings />}
+          {active === 'about' && <AboutSettings />}
+          {activeItem?.milestone &&
+            (active === 'screenshot' || active === 'recording' || active === 'wallpaper') && (
+              <StubSection title={activeItem.label} milestone={activeItem.milestone} />
+            )}
+        </main>
+      </div>
     </WindowShell>
   );
 }
