@@ -8,7 +8,7 @@ import { setDesktopIconsHidden } from '@main/system/desktopIcons';
 import { getCurrentEditorImageUrl } from '@main/windows/editor';
 import { showHudWithImage } from '@main/windows/hud';
 import { markFirstRunDone, relaunchApp } from '@main/windows/firstRun';
-import { chooseSaveDirectory } from '@main/windows/settings';
+import { chooseSaveDirectory, chooseWallpaperImage } from '@main/windows/settings';
 import { registerHistoryHandlers } from '@main/ipc/historyHandlers';
 import { registerSelectionHandlers } from '@main/selection/overlay';
 import { registerGlobalShortcuts } from '@main/shortcuts/index';
@@ -42,6 +42,7 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(IPC.preferences.chooseSaveDirectory, () => chooseSaveDirectory());
+  ipcMain.handle(IPC.wallpaper.chooseImage, () => chooseWallpaperImage());
   ipcMain.handle(IPC.preferences.get, () => getPreferences());
   ipcMain.handle(IPC.preferences.set, async (_evt, patch: Partial<AppPreferences>) => {
     const next = setPreferences(patch);

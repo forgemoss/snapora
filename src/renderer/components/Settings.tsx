@@ -6,6 +6,7 @@ import { AboutSettings } from './settings/About';
 import { GeneralSettings } from './settings/General';
 import { ShortcutsSettings } from './settings/Shortcuts';
 import { StubSection } from './settings/Stub';
+import { WallpaperSettings } from './settings/Wallpaper';
 
 type SectionKey = 'general' | 'shortcuts' | 'screenshot' | 'recording' | 'wallpaper' | 'about';
 
@@ -31,7 +32,6 @@ const NAV: NavItem[] = [
     key: 'wallpaper',
     label: 'Wallpaper',
     icon: <Wallpaper className="h-4 w-4" />,
-    milestone: 'v0.5',
   },
   { key: 'about', label: 'About', icon: <Info className="h-4 w-4" /> },
 ];
@@ -70,11 +70,11 @@ export function Settings() {
         <main className="flex-1 overflow-y-auto p-6">
           {active === 'general' && <GeneralSettings />}
           {active === 'shortcuts' && <ShortcutsSettings />}
+          {active === 'wallpaper' && <WallpaperSettings />}
           {active === 'about' && <AboutSettings />}
-          {activeItem?.milestone &&
-            (active === 'screenshot' || active === 'recording' || active === 'wallpaper') && (
-              <StubSection title={activeItem.label} milestone={activeItem.milestone} />
-            )}
+          {activeItem?.milestone && (active === 'screenshot' || active === 'recording') && (
+            <StubSection title={activeItem.label} milestone={activeItem.milestone} />
+          )}
         </main>
       </div>
     </WindowShell>

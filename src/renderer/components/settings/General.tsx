@@ -60,12 +60,12 @@ export function GeneralSettings() {
           }
         />
         <Row
-          label="Hide desktop icons"
-          description="Toggles macOS desktop icons via Finder. Restored automatically when Snapora quits."
+          label="Hide desktop icons while capturing"
+          description="Auto-hide your desktop icons just for the duration of each capture. The persistent toggle lives in the menu bar."
           control={
             <Switch
-              checked={prefs.hideDesktopIcons}
-              onCheckedChange={(v) => void update('hideDesktopIcons', v)}
+              checked={prefs.hideDesktopIconsDuringCaptures}
+              onCheckedChange={(v) => void update('hideDesktopIconsDuringCaptures', v)}
             />
           }
         />

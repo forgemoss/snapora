@@ -1,12 +1,21 @@
 import { spawn } from 'node:child_process';
-import { mkdir, stat } from 'node:fs/promises';
+import { mkdir, rename, stat, unlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { app, clipboard, nativeImage } from 'electron';
 import logger from '@main/logger';
+import { compositeWindowOnBackground } from '@main/capture/compositor';
 import { pickRegion } from '@main/selection/overlay';
 import { getPreferences } from '@main/storage/prefs';
 import { insertCapture } from '@main/storage/db';
-import type { CaptureMode, CaptureOptions, CaptureResult, SelectionRect } from '@shared/types';
+import { setDesktopIconsHidden } from '@main/system/desktopIcons';
+import type {
+  AppPreferences,
+  CaptureMode,
+  CaptureOptions,
+  CaptureResult,
+  SelectionRect,
+} from '@shared/types';
 
 const SCREENCAPTURE_BIN = '/usr/sbin/screencapture';
 
@@ -71,10 +80,33 @@ function timestampedFilename(format: 'png' | 'jpg'): string {
 }
 
 export async function takeScreenshot(options: CaptureOptions): Promise<CaptureResult> {
+  const prefs = getPreferences();
+
+  // Temp icon-hide: only when the during-captures flag is on and the user
+  // hasn't already permanently hidden them (then we'd flicker for nothing).
+  const tempHideIcons = prefs.hideDesktopIconsDuringCaptures && !prefs.hideDesktopIcons;
+  if (tempHideIcons) {
+    await setDesktopIconsHidden(true).catch((err) =>
+      logger.warn('capture: temp icon hide failed', err),
+    );
+  }
+
+  try {
+    return await runCapture(options, prefs);
+  } finally {
+    if (tempHideIcons) {
+      await setDesktopIconsHidden(false).catch(() => {
+        /* logged inside */
+      });
+    }
+  }
+}
+
+async function runCapture(options: CaptureOptions, prefs: AppPreferences): Promise<CaptureResult> {
   // For "area" mode, route through our homegrown overlay when the pref is on.
   // The overlay returns a global-DIP rect that we hand to `screencapture -R`.
   let region = options.region;
-  if (!region && options.mode === 'area' && getPreferences().useCustomSelectionOverlay) {
+  if (!region && options.mode === 'area' && prefs.useCustomSelectionOverlay) {
     const result = await pickRegion();
     if (result.cancelled || !result.rect) {
       return {
@@ -94,10 +126,17 @@ export async function takeScreenshot(options: CaptureOptions): Promise<CaptureRe
   const outFile = join(saveDir, timestampedFilename(format));
   await mkdir(dirname(outFile), { recursive: true });
 
+  // For window-mode captures with a custom background, screencapture writes
+  // to a temp file first and the compositor produces the final image.
+  const willComposite = options.mode === 'window' && prefs.wallpaperMode !== 'system';
+  const screencaptureTarget = willComposite
+    ? join(tmpdir(), `snapora-window-${Date.now()}.png`)
+    : outFile;
+
   const delaySeconds = Math.max(0, Math.round((options.delayMs ?? 0) / 1000));
   // Default silent unless the user explicitly opts in via prefs (handled by callers).
   const silent = options.silent !== false;
-  const args = buildArgs(options.mode, format, delaySeconds, outFile, silent, region);
+  const args = buildArgs(options.mode, format, delaySeconds, screencaptureTarget, silent, region);
 
   logger.info('capture: spawning screencapture', { args });
 
@@ -113,9 +152,38 @@ export async function takeScreenshot(options: CaptureOptions): Promise<CaptureRe
   let height: number | null = null;
 
   try {
-    await stat(outFile);
+    await stat(screencaptureTarget);
   } catch {
     cancelled = true;
+  }
+
+  if (!cancelled && exitCode === 0 && willComposite) {
+    try {
+      await compositeWindowOnBackground({
+        inputPath: screencaptureTarget,
+        outputPath: outFile,
+        background:
+          prefs.wallpaperMode === 'customImage'
+            ? { type: 'image', value: prefs.customWallpaperImagePath ?? '' }
+            : { type: 'color', value: prefs.customWallpaperColor },
+        paddingPx: prefs.windowBackgroundPaddingPx,
+      });
+    } catch (err) {
+      // Fall back to the raw window screenshot — better than nothing.
+      logger.warn('capture: composite failed, falling back to raw window image', err);
+      try {
+        await rename(screencaptureTarget, outFile);
+      } catch (renameErr) {
+        logger.error('capture: fallback rename failed', renameErr);
+        cancelled = true;
+      }
+    } finally {
+      // The temp file is no longer needed after a successful composite. If
+      // composite failed and we renamed it to outFile, the unlink no-ops.
+      void unlink(screencaptureTarget).catch(() => {
+        /* file already moved or never existed */
+      });
+    }
   }
 
   if (!cancelled && exitCode === 0) {

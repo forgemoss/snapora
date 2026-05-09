@@ -70,3 +70,18 @@ export async function chooseSaveDirectory(): Promise<string | null> {
   if (result.canceled || result.filePaths.length === 0) return null;
   return result.filePaths[0] ?? null;
 }
+
+/**
+ * IPC helper for the Wallpaper settings page — opens an image file picker
+ * filtered to common formats Snapora can load as a window background.
+ */
+export async function chooseWallpaperImage(): Promise<string | null> {
+  const focused = BrowserWindow.getFocusedWindow();
+  const result = await dialog.showOpenDialog(focused ?? new BrowserWindow({ show: false }), {
+    properties: ['openFile'],
+    title: 'Choose a custom background image',
+    filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'heic', 'tif', 'tiff'] }],
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  return result.filePaths[0] ?? null;
+}

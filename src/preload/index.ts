@@ -44,6 +44,9 @@ const api: SnaporaApi = {
     chooseSaveDirectory: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC.preferences.chooseSaveDirectory),
   },
+  wallpaper: {
+    chooseImage: (): Promise<string | null> => ipcRenderer.invoke(IPC.wallpaper.chooseImage),
+  },
   editor: {
     onImageReady: (handler: (snapUrl: string) => void) => {
       const listener = (_evt: unknown, snapUrl: string): void => handler(snapUrl);

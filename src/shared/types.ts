@@ -71,8 +71,33 @@ export interface AppPreferences {
   defaultFormat: CaptureFormat;
   /** Copy to clipboard automatically after capture. */
   autoCopyToClipboard: boolean;
-  /** Hide the desktop icons (system-wide). Restored when Snapora quits. */
+  /**
+   * Persistent "always hide desktop icons" toggle (mirrors CleanShot's
+   * menu-bar item). Lives across Snapora's lifetime; restored on quit.
+   */
   hideDesktopIcons: boolean;
+  /**
+   * Auto-hide desktop icons just for the duration of each capture
+   * (mirrors CleanShot's General → "Hide while capturing" checkbox).
+   * No-op when `hideDesktopIcons` is already true.
+   */
+  hideDesktopIconsDuringCaptures: boolean;
+  /**
+   * Window-mode background. Snapora composites the captured window onto
+   * this background instead of the original macOS desktop. Only applies
+   * to `window` mode captures — `area` and `fullscreen` capture the real
+   * desktop unchanged.
+   *  - `system`        no compositing, capture the window as-is with macOS shadow
+   *  - `customImage`   composite onto `customWallpaperImagePath`
+   *  - `customColor`   composite onto a flat `customWallpaperColor` background
+   */
+  wallpaperMode: 'system' | 'customImage' | 'customColor';
+  /** Absolute path to the user's chosen background image, or null. */
+  customWallpaperImagePath: string | null;
+  /** Hex color used by `customColor`, e.g. `#0f172a`. */
+  customWallpaperColor: string;
+  /** Padding (DIPs) between the captured window and the background edge. */
+  windowBackgroundPaddingPx: number;
   /** Delay before a full-screen capture fires (gives you time to set up). 0 = no timer. */
   selfTimerSeconds: 0 | 3 | 5 | 10;
   /**
@@ -98,6 +123,11 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   defaultFormat: 'png',
   autoCopyToClipboard: true,
   hideDesktopIcons: false,
+  hideDesktopIconsDuringCaptures: false,
+  wallpaperMode: 'system',
+  customWallpaperImagePath: null,
+  customWallpaperColor: '#0f172a',
+  windowBackgroundPaddingPx: 64,
   selfTimerSeconds: 0,
   useCustomSelectionOverlay: true,
   hotkeys: {

@@ -59,6 +59,10 @@ export const IPC = {
     set: 'preferences:set',
     chooseSaveDirectory: 'preferences:choose-save-directory',
   },
+  wallpaper: {
+    /** Open a file dialog → returns the chosen image's absolute path or null. */
+    chooseImage: 'wallpaper:choose-image',
+  },
   editor: {
     onImageReady: 'editor:image-ready',
     requestCurrent: 'editor:request-current',
@@ -113,6 +117,9 @@ export interface SnaporaApi {
     get(): Promise<AppPreferences>;
     set(patch: Partial<AppPreferences>): Promise<AppPreferences>;
     chooseSaveDirectory(): Promise<string | null>;
+  };
+  wallpaper: {
+    chooseImage(): Promise<string | null>;
   };
   editor: {
     onImageReady(handler: (snapUrl: string) => void): () => void;
