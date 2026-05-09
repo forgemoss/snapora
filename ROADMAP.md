@@ -7,12 +7,15 @@ Living document. Order is approximate build order; milestones may shuffle.
 Goal: prove the core capture pipeline end-to-end on a real Mac.
 
 - [x] Project scaffold (Electron + Vite + React + TypeScript + Tailwind)
-- [x] Tray menu + status item
+- [x] UI foundation (Tailwind theme, Button + Card primitives, Window shell layout)
+- [x] Tray menu + status item with template icon
 - [x] Global hotkey registration
-- [x] Area screenshot via `screencapture` shell-out
+- [x] Area / window / fullscreen screenshot via `screencapture`
 - [x] Save to disk + copy to clipboard
+- [x] `snap://` custom protocol for safely loading captures in the renderer
+- [x] Quick Access HUD — post-capture floating panel with Copy / Save / Edit (was v0.5)
 - [ ] First-run permission wizard (Screen Recording, Mic, Camera)
-- [ ] Basic preferences window (electron-store backed)
+- [ ] Basic preferences window
 - [ ] Code-signing + notarization in CI (waiting on Apple Developer account)
 
 ## v0.2 — Capture modes
@@ -41,7 +44,6 @@ Goal: prove the core capture pipeline end-to-end on a real Mac.
 ## v0.5 — Pinned overlays + power features
 
 - [ ] Pinned screenshot windows (transparent, always-on-top)
-- [ ] Quick access HUD (post-capture floating thumbnail)
 - [ ] OCR via Tesseract (bundled) or Tesseract.js (fallback)
 - [ ] Color picker / measure tool
 

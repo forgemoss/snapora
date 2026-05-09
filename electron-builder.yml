@@ -8,6 +8,7 @@ directories:
 
 files:
   - out/**/*
+  - resources/*.png
   - package.json
   - '!**/{.DS_Store,.git,.gitkeep,.vscode,.idea}'
   - '!**/{*.map,*.md,*.tsbuildinfo}'

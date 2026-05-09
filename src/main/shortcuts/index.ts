@@ -1,7 +1,7 @@
 import { globalShortcut } from 'electron';
 import logger from '@main/logger';
 import { takeScreenshot } from '@main/capture/screenshot';
-import { showEditorWithImage } from '@main/windows/editor';
+import { showHudWithImage } from '@main/windows/hud';
 import { getPreferences } from '@main/storage/prefs';
 import type { CaptureMode } from '@shared/types';
 
@@ -44,8 +44,8 @@ async function runCapture(mode: CaptureMode): Promise<void> {
       copyToClipboard: prefs.autoCopyToClipboard,
       saveToDisk: true,
     });
-    if (!result.cancelled && result.filePath && prefs.openEditorAfterCapture) {
-      showEditorWithImage(result.filePath);
+    if (!result.cancelled && result.filePath) {
+      showHudWithImage(result.filePath);
     }
   } catch (err) {
     logger.error('hotkey: capture failed', err);

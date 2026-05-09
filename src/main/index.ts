@@ -5,6 +5,9 @@ import { registerGlobalShortcuts, unregisterGlobalShortcuts } from '@main/shortc
 import { registerIpcHandlers } from '@main/ipc/handlers';
 import { maybeShowFirstRunWizard } from '@main/windows/firstRun';
 import { installContentSecurityPolicy } from '@main/security/csp';
+// Importing this registers `snap://` as a privileged scheme.
+// The import must happen before app.whenReady — keep it at module top.
+import { registerSnapProtocol } from '@main/security/protocol';
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -26,6 +29,7 @@ app.on('will-quit', () => {
 app.whenReady().then(() => {
   logger.info('app: ready', { version: app.getVersion(), platform: process.platform });
   installContentSecurityPolicy();
+  registerSnapProtocol();
   registerIpcHandlers();
   createTray();
   registerGlobalShortcuts();

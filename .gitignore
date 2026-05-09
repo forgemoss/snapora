@@ -25,6 +25,8 @@ coverage/
 
 # Bundled binaries (downloaded by `npm run prepare:resources`)
 resources/bin/
+# Old gitkeep no longer needed now that real assets live here
+resources/.gitkeep
 
 # Test artifacts
 playwright-report/
@@ -44,6 +46,9 @@ ExportOptions.plist
 .vscode/
 .idea/
 *.swp
+
+# Claude Code — personal/local settings only
+.claude/settings.local.json
 
 # Logs
 *.log

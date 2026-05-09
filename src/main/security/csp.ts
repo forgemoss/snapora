@@ -14,9 +14,11 @@ export function installContentSecurityPolicy(): void {
 
   const directives = [
     "default-src 'self'",
-    `script-src 'self'${isDev ? " 'unsafe-eval'" : ''}`,
+    // Vite's React preamble in dev injects an inline <script>, so 'unsafe-inline'
+    // is required there. Production gets none of these relaxations.
+    `script-src 'self'${isDev ? " 'unsafe-eval' 'unsafe-inline'" : ''}`,
     "style-src 'self' 'unsafe-inline'", // Tailwind + React inline-style
-    "img-src 'self' data: blob: file:",
+    "img-src 'self' data: blob: snap:",
     "font-src 'self' data:",
     `connect-src 'self'${isDev ? ' ws://localhost:* http://localhost:* https://localhost:*' : ''}`,
     "object-src 'none'",

@@ -43,6 +43,7 @@ export default defineConfig({
           editor: resolve('src/renderer/editor.html'),
           settings: resolve('src/renderer/settings.html'),
           firstRun: resolve('src/renderer/first-run.html'),
+          hud: resolve('src/renderer/hud.html'),
         },
       },
     },

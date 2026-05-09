@@ -19,6 +19,16 @@ export const IPC = {
   },
   editor: {
     onImageReady: 'editor:image-ready',
+    requestCurrent: 'editor:request-current',
+  },
+  hud: {
+    onImageReady: 'hud:image-ready',
+    requestCurrent: 'hud:request-current',
+    dismiss: 'hud:dismiss',
+    closeAndDelete: 'hud:close-and-delete',
+    copy: 'hud:copy',
+    saveAs: 'hud:save-as',
+    openInEditor: 'hud:open-in-editor',
   },
   app: {
     quit: 'app:quit',
@@ -43,7 +53,19 @@ export interface SnaporaApi {
     set(patch: Partial<AppPreferences>): Promise<AppPreferences>;
   };
   editor: {
-    onImageReady(handler: (filePath: string) => void): () => void;
+    onImageReady(handler: (snapUrl: string) => void): () => void;
+    /** Returns the most recent image URL the main process has shown, or null. */
+    requestCurrent(): Promise<string | null>;
+  };
+  hud: {
+    onImageReady(handler: (snapUrl: string) => void): () => void;
+    requestCurrent(): Promise<string | null>;
+    dismiss(): Promise<void>;
+    /** Discard the capture: deletes the file from disk and dismisses the HUD. */
+    closeAndDelete(): Promise<void>;
+    copy(): Promise<void>;
+    saveAs(): Promise<{ saved: boolean; path: string | null }>;
+    openInEditor(): Promise<void>;
   };
   app: {
     quit(): Promise<void>;

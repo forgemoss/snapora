@@ -1,31 +1,58 @@
+import { Copy, Pencil, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { WindowChrome, WindowFooter, WindowShell } from './Layout';
+import { Button } from './ui/button';
 
 /**
- * v0.1 — placeholder editor that shows the captured image.
- * v0.3 — replace with Konva-based annotation canvas (arrows, text, blur, etc.)
+ * v0.1 — placeholder editor that displays the captured image with a basic action bar.
+ * v0.3 — replaces the centered <img> with a Konva-backed annotation canvas.
  */
 export function Editor() {
-  const [imagePath, setImagePath] = useState<string | null>(null);
+  // Receives a snap:// URL from the main process; usable directly in <img src>.
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const off = window.snapora.editor.onImageReady((p: string) => setImagePath(p));
+    // Subscribe first so we don't miss a push that arrives while we're requesting.
+    const off = window.snapora.editor.onImageReady((url: string) => setImageUrl(url));
+    // Also pull the current image — covers the race where main pushed
+    // before this effect ran (e.g. first capture after window creation).
+    void window.snapora.editor.requestCurrent().then((url) => {
+      if (url) setImageUrl(url);
+    });
     return off;
   }, []);
 
+  const hasImage = imageUrl !== null;
+
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex h-11 items-center justify-between border-b border-white/5 px-4 pl-20">
-        <div className="text-sm font-medium tracking-wide text-white/70">Snapora — Editor</div>
-        <div className="flex items-center gap-2 text-xs text-white/40">
-          {imagePath ? <span className="font-mono">{shortPath(imagePath)}</span> : null}
-        </div>
-      </header>
+    <WindowShell>
+      <WindowChrome
+        title={hasImage ? shortPathFromSnapUrl(imageUrl!) : 'Snapora — Editor'}
+        right={
+          hasImage ? (
+            <>
+              <Button variant="ghost" size="sm" disabled title="Annotate (v0.3)">
+                <Pencil className="h-3.5 w-3.5" />
+                Annotate
+              </Button>
+              <Button variant="ghost" size="sm" title="Copy to clipboard">
+                <Copy className="h-3.5 w-3.5" />
+                Copy
+              </Button>
+              <Button variant="primary" size="sm" title="Save as…">
+                <Save className="h-3.5 w-3.5" />
+                Save
+              </Button>
+            </>
+          ) : null
+        }
+      />
       <main className="grid flex-1 place-items-center overflow-auto p-8">
-        {imagePath ? (
+        {hasImage ? (
           <img
-            src={`file://${imagePath}`}
+            src={imageUrl}
             alt="captured"
-            className="max-h-full max-w-full rounded-md shadow-2xl ring-1 ring-white/5"
+            className="max-h-full max-w-full rounded-lg shadow-2xl ring-1 ring-white/10"
           />
         ) : (
           <div className="text-center text-white/40">
@@ -34,15 +61,22 @@ export function Editor() {
           </div>
         )}
       </main>
-      <footer className="flex h-9 items-center justify-end gap-3 border-t border-white/5 px-4 text-xs text-white/40">
+      <WindowFooter>
         <span>Annotation tools coming in v0.3 — see ROADMAP.md</span>
-      </footer>
-    </div>
+        {hasImage ? <span className="font-mono">PNG</span> : null}
+      </WindowFooter>
+    </WindowShell>
   );
 }
 
-function shortPath(p: string): string {
-  const parts = p.split('/');
-  if (parts.length <= 4) return p;
-  return `…/${parts.slice(-3).join('/')}`;
+function shortPathFromSnapUrl(snapUrl: string): string {
+  // snap:///Users/.../Snapora%20foo.png → readable last few segments
+  try {
+    const path = decodeURIComponent(new URL(snapUrl).pathname);
+    const parts = path.split('/');
+    if (parts.length <= 4) return path;
+    return `…/${parts.slice(-3).join('/')}`;
+  } catch {
+    return snapUrl;
+  }
 }
