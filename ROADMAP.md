@@ -46,13 +46,7 @@ Goal: prove the core capture pipeline end-to-end on a real Mac.
 - [ ] Pinned screenshot windows (transparent, always-on-top)
 - [ ] OCR via Tesseract (bundled) or Tesseract.js (fallback)
 - [ ] Color picker / measure tool
-
-## v0.6 — Cloud + sharing
-
-- [ ] `UploadProvider` interface
-- [ ] Built-in providers: S3, Cloudflare R2, Backblaze B2, WebDAV, ShareX-compatible custom uploader
-- [ ] Short-link generation hooks
-- [ ] Drag-out from menu bar to any app
+- [ ] Drag-out from HUD / pinned windows to any app
 
 ## v1.0 — Stability + polish
 
@@ -67,5 +61,5 @@ Goal: prove the core capture pipeline end-to-end on a real Mac.
 
 - [ ] Scrolling capture
 - [ ] On-device AI (denoise, redact PII)
-- [ ] Optional managed cloud at `snapora.cloud` (for users who don't want BYO-cloud)
+- [ ] Cloud upload providers (S3, R2, WebDAV, etc.) — deferred until v1.0 ships and demand is clear
 - [ ] Windows / Linux ports (capture pipeline rewrite per OS)

@@ -31,6 +31,10 @@ export const IPC = {
     saveAs: 'hud:save-as',
     openInEditor: 'hud:open-in-editor',
   },
+  firstRun: {
+    markDone: 'first-run:mark-done',
+    relaunch: 'first-run:relaunch',
+  },
   app: {
     quit: 'app:quit',
     version: 'app:version',
@@ -68,6 +72,10 @@ export interface SnaporaApi {
     copy(): Promise<void>;
     saveAs(): Promise<{ saved: boolean; path: string | null }>;
     openInEditor(): Promise<void>;
+  };
+  firstRun: {
+    markDone(): Promise<void>;
+    relaunch(): Promise<void>;
   };
   app: {
     quit(): Promise<void>;

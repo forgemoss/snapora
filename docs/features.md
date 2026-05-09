@@ -58,20 +58,9 @@ Right-click captured image → "Copy text". Two modes:
 
 Browsable list of recent captures, backed by a local SQLite database (`better-sqlite3`). Configurable retention; "clear on quit" option for sensitive workflows. Schema: `captures(id, file_path, captured_at, mode, width, height)` plus an `uploads(...)` join table when v0.6 lands.
 
-## 8. Cloud upload (pluggable)
+## 8. Shortcuts
 
-A small `UploadProvider` interface in `src/main/upload/` with built-in implementations:
-
-- **S3** (AWS S3, Cloudflare R2, Backblaze B2, MinIO, etc.) via `@aws-sdk/client-s3`
-- **Generic HTTP** — multipart POST, ShareX-format custom uploaders
-- **WebDAV**
-- **Imgur** (anonymous / OAuth)
-
-Users pick zero or more defaults. Uploads only happen when the user triggers them — no background telemetry. A future hosted `snapora.cloud` would plug in as another provider.
-
-## 9. Shortcuts
-
-Global hotkeys for every capture mode and action (Electron `globalShortcut`). Conflict detection in Settings. Accelerator strings stored in `electron-store` preferences.
+Global hotkeys for every capture mode and action (Electron `globalShortcut`). Conflict detection in Settings. Accelerator strings stored in the homegrown JSON preferences file.
 
 Defaults:
 
@@ -79,9 +68,11 @@ Defaults:
 - ⌘⇧3 — capture window
 - ⌘⇧4 — capture full screen
 
-## 10. Privacy
+## 9. Privacy
 
-- App is unsandboxed (sandboxing breaks tray, global hotkeys, and arbitrary file save). All file access is local except explicit uploads.
+- App is unsandboxed (sandboxing breaks tray, global hotkeys, and arbitrary file save). All file access stays local — Snapora does not send anything off the machine.
 - TCC prompts: Screen Recording (required), Microphone / Camera (only if recording).
-- No analytics in v1. Crash reporting opt-in only.
+- No analytics, no telemetry, no crash reporting in v1.
 - The renderer is sandboxed and `contextIsolation` is on; only `window.snapora.*` (defined in [src/preload/index.ts](../src/preload/index.ts)) is exposed.
+
+> **Note on cloud uploads:** an `UploadProvider` scaffold exists in `src/main/upload/` from earlier roadmap iterations. Cloud upload is deferred indefinitely (see ROADMAP.md → Beyond) — Snapora is local-first. The scaffold is left in place to keep options open without committing to it.

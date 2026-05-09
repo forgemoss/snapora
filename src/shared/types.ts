@@ -36,6 +36,10 @@ export interface PermissionState {
 }
 
 export interface AppPreferences {
+  // ----- App lifecycle -----
+  /** True once the user has completed (or skipped) the first-run wizard. */
+  seenFirstRun: boolean;
+
   // ----- General -----
   /** Launch Snapora when the Mac boots. */
   launchAtLogin: boolean;
@@ -58,6 +62,7 @@ export interface AppPreferences {
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
+  seenFirstRun: false,
   launchAtLogin: false,
   soundOnCapture: false,
   menuBarOnly: true,

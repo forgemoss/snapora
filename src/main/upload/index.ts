@@ -1,11 +1,10 @@
 /**
- * Upload provider abstraction.
+ * Upload provider abstraction (deferred).
  *
- * Each provider is a small implementation of `UploadProvider`. Built-ins
- * (S3, R2, B2, WebDAV, ShareX-format custom) plug in here. A future hosted
- * `snapora.cloud` would be just another provider.
- *
- * v0.1 — stub. Implemented in milestone v0.6.
+ * Originally targeted v0.6; cloud upload is now Beyond — the project is
+ * local-first. This file is kept as a small interface so a future
+ * implementation has a place to land. Do not wire it up to UI without
+ * a roadmap update.
  */
 
 export interface UploadProgress {

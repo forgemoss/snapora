@@ -32,8 +32,7 @@ A community-built, MIT-licensed alternative to [CleanShot X](https://cleanshot.c
 Snapora is a **free and open-source replacement for paid screen-capture apps on macOS** — built for power users who want CleanShot-level polish without lock-in or subscriptions.
 
 - **No subscription, no account required** — install and capture
-- **Bring your own cloud** — S3, R2, Backblaze B2, WebDAV, ShareX-compatible. Your screenshots, your storage
-- **No telemetry** — uploads happen only when you trigger them
+- **No telemetry** — your captures stay on your Mac
 - **Hackable by design** — TypeScript + Electron + React, the same stack any web developer already knows
 - **Clean-room implementation** — built from public Apple docs and bundled OSS tools (`screencapture`, `ffmpeg`, `tesseract`); no decompiling, no leaked code
 
@@ -49,7 +48,6 @@ Snapora is a **free and open-source replacement for paid screen-capture apps on 
 - **OCR** — extract text from any screenshot (bundled Tesseract or on-device)
 - **Pin overlays** — float screenshots above any window for visual diffs
 - **Quick-access HUD** — post-capture floating thumbnail with one-click actions
-- **Cloud upload** — S3-compatible (AWS, Cloudflare R2, Backblaze B2, MinIO), WebDAV, ShareX-format custom uploaders
 - **History** — searchable local SQLite, configurable retention
 - **Global hotkeys** — fully rebindable
 - **Menu-bar app** — no Dock clutter
@@ -80,24 +78,19 @@ On first capture, macOS will ask for **Screen Recording** permission. Grant it, 
 
 ## Snapora vs CleanShot X
 
-|                                     |        **Snapora**        |                CleanShot X                 |     Shottr      |
-| ----------------------------------- | :-----------------------: | :----------------------------------------: | :-------------: |
-| Price                               |         **Free**          | $29 (single seat, lifetime) + $10/mo cloud | Free + paid pro |
-| Open source                         |        **✅ MIT**         |                     ❌                     |       ❌        |
-| Bring-your-own cloud (S3, R2, etc.) |          **✅**           |           ❌ (only their cloud)            |       ✅        |
-| Custom hosted cloud                 |          Planned          |                     ✅                     |       ❌        |
-| Self-hostable                       |          **✅**           |                     ❌                     |       ❌        |
-| Telemetry                           |         **None**          |                    Some                    |      Some       |
-| Account required                    |          **No**           |                  Optional                  |       No        |
-| Auto-updates                        | ✅ (via electron-updater) |                     ✅                     |       ✅        |
-| Screen recording (MP4 / GIF)        |          Planned          |                     ✅                     |     Limited     |
-| OCR                                 |          Planned          |                     ✅                     |       ✅        |
-| Pinned overlays                     |          Planned          |                     ✅                     |       ✅        |
-| Annotation editor                   |          Planned          |                     ✅                     |       ✅        |
-| macOS native (Swift)                |        ❌ Electron        |                     ✅                     |       ✅        |
-| Memory footprint                    |          ~250 MB          |                   ~60 MB                   |     ~80 MB      |
+|                              |        **Snapora**        |                CleanShot X                 |     Shottr      |
+| ---------------------------- | :-----------------------: | :----------------------------------------: | :-------------: |
+| Price                        |         **Free**          | $29 (single seat, lifetime) + $10/mo cloud | Free + paid pro |
+| Open source                  |        **✅ MIT**         |                     ❌                     |       ❌        |
+| Telemetry                    |         **None**          |                    Some                    |      Some       |
+| Account required             |          **No**           |                  Optional                  |       No        |
+| Auto-updates                 | ✅ (via electron-updater) |                     ✅                     |       ✅        |
+| Screen recording (MP4 / GIF) |          Planned          |                     ✅                     |     Limited     |
+| OCR                          |          Planned          |                     ✅                     |       ✅        |
+| Pinned overlays              |          Planned          |                     ✅                     |       ✅        |
+| Annotation editor            |          Planned          |                     ✅                     |       ✅        |
 
-**Honest take:** if memory footprint and absolute polish on Apple Silicon are deal-breakers, CleanShot X is excellent and the developers deserve their money. If you value being free, hackable, scriptable, no-account, and never having a subscription, Snapora is for you.
+**Honest take:** CleanShot X and Shottr are excellent native apps and worth supporting if you can. Snapora exists for people who want the same workflow without paying, want to read and modify the source, or want a tool that's auditable and hackable end-to-end.
 
 ## Quick start
 
@@ -105,8 +98,8 @@ After installing:
 
 1. Click the Snapora icon in your menu bar.
 2. Press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>2</kbd> to capture an area, <kbd>⌘</kbd><kbd>⇧</kbd><kbd>3</kbd> for a window, or <kbd>⌘</kbd><kbd>⇧</kbd><kbd>4</kbd> for the full screen.
-3. The capture appears in the editor — annotate, then save / copy / upload.
-4. Configure shortcuts, save folder, and upload providers in **Preferences**.
+3. The capture appears in the Quick Access HUD — copy, save, or open the editor for annotations.
+4. Configure shortcuts and save folder in **Settings…** (⌘,).
 
 ## Build from source
 

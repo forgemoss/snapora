@@ -49,6 +49,10 @@ const api: SnaporaApi = {
       ipcRenderer.invoke(IPC.hud.saveAs),
     openInEditor: (): Promise<void> => ipcRenderer.invoke(IPC.hud.openInEditor),
   },
+  firstRun: {
+    markDone: (): Promise<void> => ipcRenderer.invoke(IPC.firstRun.markDone),
+    relaunch: (): Promise<void> => ipcRenderer.invoke(IPC.firstRun.relaunch),
+  },
   app: {
     quit: (): Promise<void> => ipcRenderer.invoke(IPC.app.quit),
     version: (): Promise<string> => ipcRenderer.invoke(IPC.app.version),

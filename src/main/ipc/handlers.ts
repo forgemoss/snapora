@@ -6,6 +6,7 @@ import { syncLoginItem } from '@main/storage/loginItem';
 import { getPreferences, setPreferences } from '@main/storage/prefs';
 import { getCurrentEditorImageUrl } from '@main/windows/editor';
 import { showHudWithImage } from '@main/windows/hud';
+import { markFirstRunDone, relaunchApp } from '@main/windows/firstRun';
 import { chooseSaveDirectory } from '@main/windows/settings';
 import { registerGlobalShortcuts } from '@main/shortcuts/index';
 import { registerHudHandlers } from '@main/ipc/hudHandlers';
@@ -50,6 +51,9 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.editor.requestCurrent, () => getCurrentEditorImageUrl());
 
   registerHudHandlers();
+
+  ipcMain.handle(IPC.firstRun.markDone, () => markFirstRunDone());
+  ipcMain.handle(IPC.firstRun.relaunch, () => relaunchApp());
 
   ipcMain.handle(IPC.app.quit, () => app.quit());
   ipcMain.handle(IPC.app.version, () => app.getVersion());
