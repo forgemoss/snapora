@@ -29,9 +29,13 @@ mac:
     - target: zip
       arch: [arm64, x64]
   # icon: build/icon.icns  # Re-enable once a real icon ships in build/
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
-  hardenedRuntime: true
+  # Skip code signing entirely until the Apple Developer Program is wired in.
+  # `identity: null` tells electron-builder to not even try — without this and
+  # without CSC_LINK, the signer falls through to a cwd path lookup and errors
+  # with "<project root> not a file".
+  identity: null
+  # hardenedRuntime requires signing; off until we have a Developer ID.
+  hardenedRuntime: false
   gatekeeperAssess: false
   notarize: false # set to true once Apple Developer creds are wired in CI
   extendInfo:
