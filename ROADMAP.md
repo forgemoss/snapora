@@ -14,9 +14,9 @@ Goal: prove the core capture pipeline end-to-end on a real Mac.
 - [x] Save to disk + copy to clipboard
 - [x] `snap://` custom protocol for safely loading captures in the renderer
 - [x] Quick Access HUD — post-capture floating panel with Copy / Save / Edit (was v0.5)
-- [ ] First-run permission wizard (Screen Recording, Mic, Camera)
-- [ ] Basic preferences window
-- [ ] Code-signing + notarization in CI (waiting on Apple Developer account)
+- [x] First-run permission wizard (Screen Recording, Mic, Camera)
+- [x] Basic preferences window
+- [ ] **Initial unsigned release** — DMG via GitHub Releases + own Homebrew tap (`forgemoss/snapora`); README documents the one-time Gatekeeper bypass
 
 ## v0.2 — Capture modes
 
@@ -50,10 +50,11 @@ Goal: prove the core capture pipeline end-to-end on a real Mac.
 
 ## v1.0 — Stability + polish
 
+- [ ] **Signed + notarized releases** — Apple Developer Program ($99/yr) wired into CI (`MAC_CERT_P12`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` secrets); zero-warning installs
+- [ ] Submit to **homebrew-cask** main repo (deprecate the `forgemoss/snapora` tap)
 - [ ] electron-updater auto-update wiring
 - [ ] Localization scaffold (en at minimum)
-- [ ] Notarization stable + DMG with custom background
-- [ ] Homebrew Cask submission
+- [ ] DMG with custom background
 - [ ] Documentation site (docs.forgemoss.com)
 - [ ] Migration guide from CleanShot/Shottr (config import where feasible)
 

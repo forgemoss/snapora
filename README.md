@@ -58,23 +58,38 @@ Full feature reference: [docs/features.md](docs/features.md).
 
 > 🚧 Pre-alpha — no installable build is published yet. The instructions below are the plan for v0.1.
 
-### Recommended: Homebrew Cask
+Snapora ships in two phases. **Until we sign builds (v1.0)**, installs need one extra step. Detailed walkthrough in [docs/install.md](docs/install.md).
+
+### Phase 1 (v0.1+) — unsigned, $0
+
+**Homebrew tap** (recommended — bypass step happens automatically):
+
+```bash
+brew tap forgemoss/snapora
+brew install --cask snapora
+```
+
+**Or direct DMG** from the [Releases page](https://github.com/forgemoss/Snapora/releases). After dragging Snapora to Applications, run once:
+
+```bash
+xattr -cr /Applications/Snapora.app
+```
+
+Then open Snapora normally. (This clears macOS's "unidentified developer" warning that fires on unsigned apps. It's a one-time install step, not per-launch.)
+
+### Phase 2 (v1.0+) — signed + notarized
+
+Once we wire up the Apple Developer Program for signing:
 
 ```bash
 brew install --cask snapora
 ```
 
-### Direct download
-
-Grab the latest signed `.dmg` from the [Releases page](https://github.com/forgemoss/Snapora/releases), open it, and drag Snapora into your Applications folder. Snapora needs **macOS 13 (Ventura)** or later, on Apple Silicon or Intel.
-
-### From source
-
-See [Build from source](#build-from-source) below.
+Zero warnings, zero terminal steps. We'll deprecate the tap in favor of the main Homebrew Cask repo.
 
 ### Permissions
 
-On first capture, macOS will ask for **Screen Recording** permission. Grant it, then quit and relaunch Snapora — macOS only applies new TCC grants after restart. (This is a system limitation that affects every screen-capture app on macOS.)
+On first launch the **first-run wizard** walks you through Screen Recording (required), Microphone (optional, for recording), and Camera (optional, for webcam overlay). Screen Recording grants take effect after **quit and relaunch** — that's a macOS rule, not a Snapora bug, and the wizard handles the prompt.
 
 ## Snapora vs CleanShot X
 
