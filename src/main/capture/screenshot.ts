@@ -3,6 +3,7 @@ import { mkdir, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { app, clipboard, nativeImage } from 'electron';
 import logger from '@main/logger';
+import { insertCapture } from '@main/storage/db';
 import type { CaptureMode, CaptureOptions, CaptureResult } from '@shared/types';
 
 const SCREENCAPTURE_BIN = '/usr/sbin/screencapture';
@@ -100,17 +101,32 @@ export async function takeScreenshot(options: CaptureOptions): Promise<CaptureRe
     }
   }
 
+  const capturedAt = new Date().toISOString();
+
   if (cancelled) {
     logger.info('capture: user cancelled');
   } else if (exitCode !== 0) {
     logger.warn('capture: screencapture exited non-zero', { exitCode });
   } else {
     logger.info('capture: saved', { outFile, width, height });
+    // Record in history. Width/height come from the clipboard image when
+    // copyToClipboard is on; if it's off they'll be null and that's fine.
+    try {
+      insertCapture({
+        filePath: outFile,
+        capturedAt,
+        mode: options.mode,
+        width,
+        height,
+      });
+    } catch (err) {
+      logger.warn('capture: history insert failed', err);
+    }
   }
 
   return {
     filePath: cancelled ? null : outFile,
-    capturedAt: new Date().toISOString(),
+    capturedAt,
     width,
     height,
     cancelled,

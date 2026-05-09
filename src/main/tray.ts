@@ -4,8 +4,10 @@ import logger from '@main/logger';
 import { takeScreenshot } from '@main/capture/screenshot';
 import { openEditorEmpty } from '@main/windows/editor';
 import { showHudWithImage } from '@main/windows/hud';
+import { openHistoryWindow } from '@main/windows/history';
 import { openSettingsWindow } from '@main/windows/settings';
-import { getPreferences } from '@main/storage/prefs';
+import { getPreferences, setPreferences } from '@main/storage/prefs';
+import { setDesktopIconsHidden } from '@main/system/desktopIcons';
 import type { CaptureMode } from '@shared/types';
 
 let tray: Tray | null = null;
@@ -40,15 +42,31 @@ export function rebuildTrayMenu(): void {
       sublabel: 'v0.2',
     },
     captureItem('Capture Area…', 'area'),
-    { label: 'Capture Previous Area', enabled: false, sublabel: 'v0.2' },
+    { label: 'Capture Previous Area', enabled: false, sublabel: 'v0.5' },
     captureItem('Capture Fullscreen', 'fullscreen'),
     captureItem('Capture Window…', 'window'),
     { label: 'Scrolling Capture', enabled: false, sublabel: 'v0.2' },
-    { label: 'Self-Timer', enabled: false, sublabel: 'v0.2' },
+    {
+      label: 'Self-Timer (fullscreen)',
+      submenu: [0, 3, 5, 10].map((s) => ({
+        label: s === 0 ? 'Off' : `${s} seconds`,
+        type: 'radio' as const,
+        checked: prefs.selfTimerSeconds === s,
+        click: () => {
+          setPreferences({ selfTimerSeconds: s as 0 | 3 | 5 | 10 });
+          rebuildTrayMenu();
+        },
+      })),
+    },
     { label: 'Capture Text (OCR)', enabled: false, sublabel: 'v0.5' },
     { label: 'Record Screen', enabled: false, sublabel: 'v0.4' },
     { type: 'separator' },
-    { label: 'Hide Desktop Icons', enabled: false, sublabel: 'v0.2' },
+    {
+      label: 'Hide Desktop Icons',
+      type: 'checkbox',
+      checked: prefs.hideDesktopIcons,
+      click: () => void toggleDesktopIcons(),
+    },
     { type: 'separator' },
     { label: 'Open Editor', click: () => openEditorEmpty() },
     {
@@ -59,7 +77,7 @@ export function rebuildTrayMenu(): void {
     },
     { label: 'Pin to the Screen…', enabled: false, sublabel: 'v0.5' },
     { type: 'separator' },
-    { label: 'Capture History…', enabled: false, sublabel: 'v0.2' },
+    { label: 'Capture History…', click: () => openHistoryWindow() },
     { type: 'separator' },
     {
       label: 'About Snapora',
@@ -78,6 +96,17 @@ export function rebuildTrayMenu(): void {
   tray.setContextMenu(menu);
 }
 
+async function toggleDesktopIcons(): Promise<void> {
+  const next = !getPreferences().hideDesktopIcons;
+  setPreferences({ hideDesktopIcons: next });
+  try {
+    await setDesktopIconsHidden(next);
+  } catch {
+    /* logged inside */
+  }
+  rebuildTrayMenu();
+}
+
 async function runCapture(mode: CaptureMode): Promise<void> {
   const prefs = getPreferences();
   try {
@@ -87,6 +116,8 @@ async function runCapture(mode: CaptureMode): Promise<void> {
       copyToClipboard: prefs.autoCopyToClipboard,
       saveToDisk: true,
       silent: !prefs.soundOnCapture,
+      // Self-timer applies to fullscreen only (screencapture -T is fullscreen-only).
+      delayMs: mode === 'fullscreen' ? prefs.selfTimerSeconds * 1000 : 0,
     });
     if (!result.cancelled && result.filePath) {
       showHudWithImage(result.filePath);

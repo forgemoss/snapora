@@ -4,10 +4,12 @@ import { takeScreenshot } from '@main/capture/screenshot';
 import { listPermissions, openSystemSettingsFor, requestPermission } from '@main/permissions/tcc';
 import { syncLoginItem } from '@main/storage/loginItem';
 import { getPreferences, setPreferences } from '@main/storage/prefs';
+import { setDesktopIconsHidden } from '@main/system/desktopIcons';
 import { getCurrentEditorImageUrl } from '@main/windows/editor';
 import { showHudWithImage } from '@main/windows/hud';
 import { markFirstRunDone, relaunchApp } from '@main/windows/firstRun';
 import { chooseSaveDirectory } from '@main/windows/settings';
+import { registerHistoryHandlers } from '@main/ipc/historyHandlers';
 import { registerGlobalShortcuts } from '@main/shortcuts/index';
 import { registerHudHandlers } from '@main/ipc/hudHandlers';
 import { IPC } from '@shared/ipc';
@@ -40,17 +42,23 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.preferences.chooseSaveDirectory, () => chooseSaveDirectory());
   ipcMain.handle(IPC.preferences.get, () => getPreferences());
-  ipcMain.handle(IPC.preferences.set, (_evt, patch: Partial<AppPreferences>) => {
+  ipcMain.handle(IPC.preferences.set, async (_evt, patch: Partial<AppPreferences>) => {
     const next = setPreferences(patch);
     // React to side-effecting prefs.
     if ('launchAtLogin' in patch) syncLoginItem(next.launchAtLogin);
     if ('hotkeys' in patch) registerGlobalShortcuts();
+    if ('hideDesktopIcons' in patch) {
+      await setDesktopIconsHidden(next.hideDesktopIcons).catch(() => {
+        /* logged inside */
+      });
+    }
     return next;
   });
 
   ipcMain.handle(IPC.editor.requestCurrent, () => getCurrentEditorImageUrl());
 
   registerHudHandlers();
+  registerHistoryHandlers();
 
   ipcMain.handle(IPC.firstRun.markDone, () => markFirstRunDone());
   ipcMain.handle(IPC.firstRun.relaunch, () => relaunchApp());

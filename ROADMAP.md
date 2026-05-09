@@ -16,15 +16,17 @@ Goal: prove the core capture pipeline end-to-end on a real Mac.
 - [x] Quick Access HUD — post-capture floating panel with Copy / Save / Edit (was v0.5)
 - [x] First-run permission wizard (Screen Recording, Mic, Camera)
 - [x] Basic preferences window
-- [ ] **Initial unsigned release** — DMG via GitHub Releases + own Homebrew tap (`forgemoss/snapora`); README documents the one-time Gatekeeper bypass
+- [x] Self-timer (3 / 5 / 10s) for fullscreen captures
+- [x] Hide desktop icons toggle (tray + Settings, restored on quit)
+- [x] Capture history (SQLite, browsable, with reveal-in-Finder + delete)
+- [ ] **Initial unsigned release** — DMG via GitHub Releases (Brew tap deferred to v1.0); README documents the one-time Gatekeeper bypass
 
-## v0.2 — Capture modes
+## v0.2 — Capture polish
 
-- [ ] Window capture (`screencapture -W`)
-- [ ] Full-screen per-display
-- [ ] Self-timer (3 / 5 / 10s)
-- [ ] Hide desktop icons toggle
-- [ ] Capture history (SQLite, browsable, configurable retention)
+- [ ] Capture Previous Area (requires our own selection overlay — `screencapture -i` doesn't expose bounds)
+- [ ] Open from Clipboard (paste an image and treat it as a capture)
+- [ ] Full-screen per-display picker (when more than one display is connected)
+- [ ] Configurable retention for capture history
 
 ## v0.3 — Annotation editor
 

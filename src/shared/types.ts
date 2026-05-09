@@ -53,8 +53,10 @@ export interface AppPreferences {
   defaultFormat: CaptureFormat;
   /** Copy to clipboard automatically after capture. */
   autoCopyToClipboard: boolean;
-  /** Hide the desktop icons by default during full-screen capture. v0.2 — stubbed for now. */
+  /** Hide the desktop icons (system-wide). Restored when Snapora quits. */
   hideDesktopIcons: boolean;
+  /** Delay before a full-screen capture fires (gives you time to set up). 0 = no timer. */
+  selfTimerSeconds: 0 | 3 | 5 | 10;
 
   // ----- Shortcuts -----
   /** Global hotkey strings (Electron accelerator format) per capture mode. */
@@ -70,6 +72,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   defaultFormat: 'png',
   autoCopyToClipboard: true,
   hideDesktopIcons: false,
+  selfTimerSeconds: 0,
   hotkeys: {
     area: 'CommandOrControl+Shift+2',
     window: 'CommandOrControl+Shift+3',

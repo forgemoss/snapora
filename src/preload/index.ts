@@ -53,6 +53,14 @@ const api: SnaporaApi = {
     markDone: (): Promise<void> => ipcRenderer.invoke(IPC.firstRun.markDone),
     relaunch: (): Promise<void> => ipcRenderer.invoke(IPC.firstRun.relaunch),
   },
+  history: {
+    list: (limit?: number) => ipcRenderer.invoke(IPC.history.list, limit),
+    openInEditor: (id: number) => ipcRenderer.invoke(IPC.history.openInEditor, id),
+    revealInFinder: (id: number) => ipcRenderer.invoke(IPC.history.revealInFinder, id),
+    deleteEntry: (id: number, alsoFile: boolean) =>
+      ipcRenderer.invoke(IPC.history.deleteEntry, id, alsoFile),
+    clearAll: () => ipcRenderer.invoke(IPC.history.clearAll),
+  },
   app: {
     quit: (): Promise<void> => ipcRenderer.invoke(IPC.app.quit),
     version: (): Promise<string> => ipcRenderer.invoke(IPC.app.version),

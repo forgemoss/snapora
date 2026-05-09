@@ -60,32 +60,25 @@ Full feature reference: [docs/features.md](docs/features.md).
 
 Snapora ships in two phases. **Until we sign builds (v1.0)**, installs need one extra step. Detailed walkthrough in [docs/install.md](docs/install.md).
 
-### Phase 1 (v0.1+) — unsigned, $0
+### Phase 1 (v0.1+) — direct DMG, $0
 
-**Homebrew tap** (recommended — bypass step happens automatically):
-
-```bash
-brew tap forgemoss/snapora
-brew install --cask snapora
-```
-
-**Or direct DMG** from the [Releases page](https://github.com/forgemoss/Snapora/releases). After dragging Snapora to Applications, run once:
+Grab the latest `Snapora-<version>-arm64.dmg` (Apple silicon) or `-x64.dmg` (Intel) from the [Releases page](https://github.com/forgemoss/Snapora/releases). Drag Snapora to Applications, then run once in Terminal:
 
 ```bash
 xattr -cr /Applications/Snapora.app
 ```
 
-Then open Snapora normally. (This clears macOS's "unidentified developer" warning that fires on unsigned apps. It's a one-time install step, not per-launch.)
+Open Snapora normally — the first-run wizard handles permissions. The `xattr` command clears macOS's "unidentified developer" warning that fires on unsigned apps. One-time per install, not per launch.
 
-### Phase 2 (v1.0+) — signed + notarized
+### Phase 2 (v1.0+) — signed + notarized + Homebrew
 
-Once we wire up the Apple Developer Program for signing:
+Once the Apple Developer Program ($99/yr) is wired in:
 
 ```bash
 brew install --cask snapora
 ```
 
-Zero warnings, zero terminal steps. We'll deprecate the tap in favor of the main Homebrew Cask repo.
+Zero warnings, zero terminal steps, auto-updates via electron-updater.
 
 ### Permissions
 

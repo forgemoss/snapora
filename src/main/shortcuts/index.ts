@@ -44,6 +44,7 @@ async function runCapture(mode: CaptureMode): Promise<void> {
       copyToClipboard: prefs.autoCopyToClipboard,
       saveToDisk: true,
       silent: !prefs.soundOnCapture,
+      delayMs: mode === 'fullscreen' ? prefs.selfTimerSeconds * 1000 : 0,
     });
     if (!result.cancelled && result.filePath) {
       showHudWithImage(result.filePath);

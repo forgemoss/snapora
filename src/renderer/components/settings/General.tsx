@@ -60,13 +60,12 @@ export function GeneralSettings() {
           }
         />
         <Row
-          label="Hide desktop icons during full-screen capture"
-          description="Coming in v0.2 — slider lives here once implemented."
+          label="Hide desktop icons"
+          description="Toggles macOS desktop icons via Finder. Restored automatically when Snapora quits."
           control={
             <Switch
               checked={prefs.hideDesktopIcons}
               onCheckedChange={(v) => void update('hideDesktopIcons', v)}
-              disabled
             />
           }
         />
@@ -82,6 +81,22 @@ export function GeneralSettings() {
               options={[
                 { value: 'png', label: 'PNG' },
                 { value: 'jpg', label: 'JPG' },
+              ]}
+            />
+          }
+        />
+        <Row
+          label="Self-timer (fullscreen captures)"
+          description="Delay before the capture fires, giving you time to set up."
+          control={
+            <Select<'0' | '3' | '5' | '10'>
+              value={String(prefs.selfTimerSeconds) as '0' | '3' | '5' | '10'}
+              onChange={(v) => void update('selfTimerSeconds', Number(v) as 0 | 3 | 5 | 10)}
+              options={[
+                { value: '0', label: 'Off' },
+                { value: '3', label: '3 seconds' },
+                { value: '5', label: '5 seconds' },
+                { value: '10', label: '10 seconds' },
               ]}
             />
           }

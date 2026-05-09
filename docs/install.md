@@ -35,18 +35,7 @@ If that's a deal-breaker for you, watch the repo and wait for v1.0 — by then i
 
 4. Open Snapora from Applications. The first-run wizard walks you through the macOS permissions (Screen Recording is required).
 
-## Option 2: Homebrew tap
-
-Once we publish the tap (tracked in [ROADMAP.md → v0.1](../ROADMAP.md)):
-
-```bash
-brew tap forgemoss/snapora
-brew install --cask snapora
-```
-
-The cask file runs the `xattr` step automatically, so no Terminal commands needed.
-
-## Option 3 (post v1.0): the homebrew-cask main repo
+## Option 2 (post v1.0): the homebrew-cask main repo
 
 Once Snapora is signed and notarized, we'll submit to the main Homebrew Cask repo:
 
@@ -54,7 +43,7 @@ Once Snapora is signed and notarized, we'll submit to the main Homebrew Cask rep
 brew install --cask snapora    # zero setup, zero warnings
 ```
 
-No tap needed.
+No tap needed. Until then, use the direct DMG above.
 
 ## Build from source
 

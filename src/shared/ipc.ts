@@ -1,4 +1,21 @@
-import type { CaptureOptions, CaptureResult, PermissionState, AppPreferences } from './types';
+import type {
+  CaptureMode,
+  CaptureOptions,
+  CaptureResult,
+  PermissionState,
+  AppPreferences,
+} from './types';
+
+export interface HistoryItem {
+  id: number;
+  filePath: string;
+  capturedAt: string;
+  mode: CaptureMode;
+  width: number | null;
+  height: number | null;
+  exists: boolean;
+  snapUrl: string;
+}
 
 /**
  * Centralized IPC channel names. Both sides import from here so a typo is a compile error.
@@ -34,6 +51,13 @@ export const IPC = {
   firstRun: {
     markDone: 'first-run:mark-done',
     relaunch: 'first-run:relaunch',
+  },
+  history: {
+    list: 'history:list',
+    openInEditor: 'history:open-in-editor',
+    revealInFinder: 'history:reveal-in-finder',
+    deleteEntry: 'history:delete',
+    clearAll: 'history:clear-all',
   },
   app: {
     quit: 'app:quit',
@@ -76,6 +100,13 @@ export interface SnaporaApi {
   firstRun: {
     markDone(): Promise<void>;
     relaunch(): Promise<void>;
+  };
+  history: {
+    list(limit?: number): Promise<HistoryItem[]>;
+    openInEditor(id: number): Promise<void>;
+    revealInFinder(id: number): Promise<void>;
+    deleteEntry(id: number, alsoFile: boolean): Promise<void>;
+    clearAll(): Promise<void>;
   };
   app: {
     quit(): Promise<void>;
