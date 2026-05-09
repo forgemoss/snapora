@@ -12,17 +12,14 @@ files:
   - package.json
   - '!**/{.DS_Store,.git,.gitkeep,.vscode,.idea}'
   - '!**/{*.map,*.md,*.tsbuildinfo}'
-  - '!**/{tsconfig*.json,tsconfig*.json,vite.config.*,vitest.config.*,playwright.config.*}'
+  - '!**/{tsconfig*.json,vite.config.*,vitest.config.*,playwright.config.*}'
   - '!**/{.eslintrc*,.prettierrc*,eslint.config.*}'
 
-extraResources:
-  - from: resources/bin
-    to: bin
-    filter: ['**/*']
-
+# extraResources for bundled binaries (ffmpeg, tesseract, etc.) is wired up
+# from v0.4 onward — the resources/bin folder doesn't exist yet, and
+# pointing at a missing source breaks `electron-builder` packaging. Re-add
+# this block once those binaries land in resources/bin.
 asar: true
-asarUnpack:
-  - resources/bin/**/*
 
 mac:
   category: public.app-category.productivity
@@ -31,7 +28,7 @@ mac:
       arch: [arm64, x64]
     - target: zip
       arch: [arm64, x64]
-  icon: build/icon.icns
+  # icon: build/icon.icns  # Re-enable once a real icon ships in build/
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   hardenedRuntime: true
@@ -43,15 +40,11 @@ mac:
     NSScreenCaptureUsageDescription: Snapora needs screen recording access to take screenshots and record your screen.
     LSUIElement: true # menu-bar-only app (no Dock icon)
 
+# DMG layout — let electron-builder use defaults (.app left, /Applications right).
+# Custom contents arrays without explicit path: caused "not a file" packaging
+# errors; revisit once we have a custom DMG background.
 dmg:
   sign: false
-  contents:
-    - x: 130
-      y: 220
-    - x: 410
-      y: 220
-      type: link
-      path: /Applications
 
 publish:
   provider: github

@@ -1,6 +1,6 @@
 {
   "name": "snapora",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Free, open-source screenshot, screen-recording, and annotation app for macOS.",
   "main": "./out/main/index.js",
   "author": {
