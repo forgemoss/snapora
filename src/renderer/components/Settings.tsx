@@ -1,14 +1,22 @@
-import { Image, Info, Keyboard, SlidersHorizontal, Video, Wallpaper } from 'lucide-react';
+import { Image, Info, Keyboard, Layers, SlidersHorizontal, Video, Wallpaper } from 'lucide-react';
 import { useState } from 'react';
 import { WindowChrome, WindowShell } from './Layout';
 import { cn } from '@renderer/lib/cn';
 import { AboutSettings } from './settings/About';
 import { GeneralSettings } from './settings/General';
+import { QuickAccessSettings } from './settings/QuickAccess';
 import { ShortcutsSettings } from './settings/Shortcuts';
 import { StubSection } from './settings/Stub';
 import { WallpaperSettings } from './settings/Wallpaper';
 
-type SectionKey = 'general' | 'shortcuts' | 'screenshot' | 'recording' | 'wallpaper' | 'about';
+type SectionKey =
+  | 'general'
+  | 'shortcuts'
+  | 'quickAccess'
+  | 'screenshot'
+  | 'recording'
+  | 'wallpaper'
+  | 'about';
 
 interface NavItem {
   key: SectionKey;
@@ -21,6 +29,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { key: 'general', label: 'General', icon: <SlidersHorizontal className="h-4 w-4" /> },
   { key: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
+  { key: 'quickAccess', label: 'Quick Access', icon: <Layers className="h-4 w-4" /> },
   {
     key: 'screenshot',
     label: 'Screenshot',
@@ -70,6 +79,7 @@ export function Settings() {
         <main className="flex-1 overflow-y-auto p-6">
           {active === 'general' && <GeneralSettings />}
           {active === 'shortcuts' && <ShortcutsSettings />}
+          {active === 'quickAccess' && <QuickAccessSettings />}
           {active === 'wallpaper' && <WallpaperSettings />}
           {active === 'about' && <AboutSettings />}
           {activeItem?.milestone && (active === 'screenshot' || active === 'recording') && (

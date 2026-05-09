@@ -1,60 +1,93 @@
-import { ClipboardCopy, Download, Wand2, X } from 'lucide-react';
+import { ClipboardCopy, Download, Trash2, Wand2, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@renderer/lib/cn';
+import type { HudCard } from '@shared/ipc';
 
-const AUTO_DISMISS_MS = 6000;
+type ActionKey = 'close' | 'delete' | 'edit' | 'copy' | 'save';
 
-type ActionKey = 'close' | 'edit' | 'copy' | 'save';
+// `WebkitAppRegion` isn't in React's strict CSSProperties type, so cast.
+const DRAG_REGION = { WebkitAppRegion: 'drag' } as unknown as React.CSSProperties;
+const NO_DRAG_REGION = { WebkitAppRegion: 'no-drag' } as unknown as React.CSSProperties;
 
 export function Hud() {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [pendingAction, setPendingAction] = useState<ActionKey | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [cards, setCards] = useState<HudCard[]>([]);
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHovered = useRef(false);
+  // Cached auto-close pref so the timer doesn't have to await prefs each tick.
+  const autoCloseMs = useRef<number | null>(6000);
 
-  const clearTimer = () => {
+  const clearTimer = (): void => {
     if (dismissTimer.current) {
       clearTimeout(dismissTimer.current);
       dismissTimer.current = null;
     }
   };
 
-  const scheduleDismiss = useCallback(() => {
+  const scheduleDismiss = useCallback((): void => {
     clearTimer();
     if (isHovered.current) return;
+    if (autoCloseMs.current == null) return; // disabled
     dismissTimer.current = setTimeout(() => {
       void window.snapora.hud.dismiss();
-    }, AUTO_DISMISS_MS);
+    }, autoCloseMs.current);
+  }, []);
+
+  // Pull HUD prefs from main on every stack push so changes in Settings
+  // take effect on the next capture without reloading.
+  const refreshAutoClose = useCallback(async (): Promise<void> => {
+    const prefs = await window.snapora.preferences.get();
+    autoCloseMs.current = prefs.hudAutoCloseEnabled ? prefs.hudAutoCloseSeconds * 1000 : null;
   }, []);
 
   useEffect(() => {
-    const off = window.snapora.hud.onImageReady((url) => {
-      setImageUrl(url);
-      setPendingAction(null);
-      setToast(null);
-      scheduleDismiss();
+    const off = window.snapora.hud.onStack((next) => {
+      setCards(next);
+      if (next.length > 0) {
+        void refreshAutoClose().then(scheduleDismiss);
+      }
     });
-    void window.snapora.hud.requestCurrent().then((url) => {
-      if (url) {
-        setImageUrl(url);
-        scheduleDismiss();
+    void window.snapora.hud.requestStack().then((current) => {
+      if (current.length > 0) {
+        setCards(current);
+        void refreshAutoClose().then(scheduleDismiss);
       }
     });
     return () => {
       off();
       clearTimer();
     };
-  }, [scheduleDismiss]);
+  }, [refreshAutoClose, scheduleDismiss]);
 
-  const handleEnter = () => {
+  const handleEnter = (): void => {
     isHovered.current = true;
     clearTimer();
   };
-  const handleLeave = () => {
+  const handleLeave = (): void => {
     isHovered.current = false;
     scheduleDismiss();
   };
+
+  if (cards.length === 0) return null;
+
+  return (
+    // Wrapper is the drag region — clicking the gap above / between cards
+    // moves the window. Cards opt back out via NO_DRAG_REGION.
+    <div
+      className="flex h-screen w-screen flex-col gap-2.5 bg-slate-900"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+      style={DRAG_REGION}
+    >
+      {cards.map((card) => (
+        <Card key={card.id} card={card} />
+      ))}
+    </div>
+  );
+}
+
+function Card({ card }: { card: HudCard }) {
+  const [pendingAction, setPendingAction] = useState<ActionKey | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const run =
     (key: ActionKey, fn: () => Promise<unknown>, successToast?: string) =>
@@ -74,66 +107,94 @@ export function Hud() {
       }
     };
 
-  if (!imageUrl) {
-    return null;
-  }
-
   return (
     <div
-      className="flex h-screen w-screen items-center justify-center bg-slate-900 p-1.5"
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
+      className="group relative h-40 w-full shrink-0 overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10"
+      // The card itself is interactive — disable the wrapper's drag region
+      // so clicks and HTML5 drag events on the image work normally.
+      style={NO_DRAG_REGION}
     >
-      <div className="group relative h-full w-full overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10">
-        <img
-          src={imageUrl}
-          alt="captured"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+      <img
+        src={card.snapUrl}
+        alt="captured"
+        className="absolute inset-0 h-full w-full object-cover"
+        draggable
+        onDragStart={(e) => {
+          // Suppress HTML5 drag — Electron's startDrag takes over so the
+          // file can be dropped into other apps as an actual file.
+          e.preventDefault();
+          window.snapora.hud.beginDrag(card.id);
+        }}
+      />
 
-        {/* Dark overlay — fades in on hover */}
-        <div className="pointer-events-none absolute inset-0 bg-black/55 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute inset-0 bg-black/55 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
 
-        {toast ? (
-          <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-emerald-500/85 text-sm font-medium text-white">
-            {toast}
+      {toast ? (
+        <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-emerald-500/85 text-sm font-medium text-white">
+          {toast}
+        </div>
+      ) : null}
+
+      <div className="absolute inset-0 z-10 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+        <CornerButton
+          className="left-1.5 top-1.5"
+          label="Close (keep on disk)"
+          onClick={run('close', () => window.snapora.hud.dismissCard(card.id))}
+        >
+          <X className="h-3 w-3" />
+        </CornerButton>
+
+        <CornerButton
+          className="right-1.5 top-1.5"
+          label="Delete from disk"
+          onClick={run('delete', () => window.snapora.hud.discardCard(card.id))}
+        >
+          <Trash2 className="h-3 w-3" />
+        </CornerButton>
+
+        <CornerButton
+          className="bottom-1.5 left-1.5"
+          label="Open in editor"
+          onClick={run('edit', () => window.snapora.hud.openCardInEditor(card.id))}
+        >
+          <Wand2 className="h-3 w-3" />
+        </CornerButton>
+
+        {card.width && card.height ? (
+          <div className="pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 font-mono text-[10px] text-white/80">
+            {card.width} × {card.height}
           </div>
         ) : null}
 
-        {/* Action layer — fades in on hover */}
-        <div className="absolute inset-0 z-10 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-          <CornerButton
-            className="left-1.5 top-1.5"
-            label="Discard (delete from disk)"
-            onClick={run('close', () => window.snapora.hud.closeAndDelete())}
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+          <PillButton
+            icon={<ClipboardCopy className="h-3 w-3" />}
+            onClick={run(
+              'copy',
+              async () => {
+                await window.snapora.hud.copyCard(card.id);
+                await window.snapora.hud.dismissCard(card.id);
+              },
+              'Copied',
+            )}
+            disabled={pendingAction === 'copy'}
           >
-            <X className="h-3 w-3" />
-          </CornerButton>
-
-          <CornerButton
-            className="bottom-1.5 left-1.5"
-            label="Open in editor"
-            onClick={run('edit', () => window.snapora.hud.openInEditor())}
+            Copy
+          </PillButton>
+          <PillButton
+            icon={<Download className="h-3 w-3" />}
+            onClick={run(
+              'save',
+              async () => {
+                const r = await window.snapora.hud.saveCard(card.id);
+                if (r.saved) await window.snapora.hud.dismissCard(card.id);
+              },
+              'Saved',
+            )}
+            disabled={pendingAction === 'save'}
           >
-            <Wand2 className="h-3 w-3" />
-          </CornerButton>
-
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-            <PillButton
-              icon={<ClipboardCopy className="h-3 w-3" />}
-              onClick={run('copy', () => window.snapora.hud.copy(), 'Copied')}
-              disabled={pendingAction === 'copy'}
-            >
-              Copy
-            </PillButton>
-            <PillButton
-              icon={<Download className="h-3 w-3" />}
-              onClick={run('save', () => window.snapora.hud.saveAs(), 'Saved')}
-              disabled={pendingAction === 'save'}
-            >
-              Save
-            </PillButton>
-          </div>
+            Save
+          </PillButton>
         </div>
       </div>
     </div>

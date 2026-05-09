@@ -100,6 +100,21 @@ export interface AppPreferences {
   windowBackgroundPaddingPx: number;
   /** Delay before a full-screen capture fires (gives you time to set up). 0 = no timer. */
   selfTimerSeconds: 0 | 3 | 5 | 10;
+
+  // ----- Quick Access HUD -----
+  /** Where on the screen the post-capture HUD docks. */
+  hudPosition: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  /**
+   * When true, the HUD shows on whichever display the cursor is currently on.
+   * When false, it always shows on the primary display.
+   */
+  hudFollowActiveScreen: boolean;
+  /** Card size in the HUD. Bigger = easier to read, more screen real estate. */
+  hudSize: 'small' | 'medium' | 'large';
+  /** Whether the HUD auto-hides after a delay. */
+  hudAutoCloseEnabled: boolean;
+  /** Seconds before auto-close fires when enabled. */
+  hudAutoCloseSeconds: 3 | 6 | 10 | 30;
   /**
    * Route "Capture Area" through Snapora's homegrown selection overlay
    * (transparent fullscreen window per display) instead of `screencapture -i`.
@@ -129,6 +144,11 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   customWallpaperColor: '#0f172a',
   windowBackgroundPaddingPx: 64,
   selfTimerSeconds: 0,
+  hudPosition: 'bottom-right',
+  hudFollowActiveScreen: true,
+  hudSize: 'medium',
+  hudAutoCloseEnabled: true,
+  hudAutoCloseSeconds: 6,
   useCustomSelectionOverlay: true,
   hotkeys: {
     area: 'CommandOrControl+Shift+2',

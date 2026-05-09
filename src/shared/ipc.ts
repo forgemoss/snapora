@@ -32,6 +32,21 @@ export interface HistoryItem {
 }
 
 /**
+ * One card in the Quick Access HUD stack. The HUD shows a vertical pile of
+ * these — newest at the top, capped at `HUD_MAX_STACK` (in src/main/windows/hud.ts).
+ * `id` is a monotonic counter assigned when the card is pushed.
+ */
+export interface HudCard {
+  id: number;
+  filePath: string;
+  /** snap:// URL the renderer can load directly. */
+  snapUrl: string;
+  width: number | null;
+  height: number | null;
+  capturedAt: string;
+}
+
+/**
  * Centralized IPC channel names. Both sides import from here so a typo is a compile error.
  */
 export const IPC = {
@@ -68,13 +83,28 @@ export const IPC = {
     requestCurrent: 'editor:request-current',
   },
   hud: {
-    onImageReady: 'hud:image-ready',
-    requestCurrent: 'hud:request-current',
+    /** main → renderer: a fresh card just landed; full stack is sent. */
+    onStack: 'hud:on-stack',
+    /** renderer → main: pull the current stack on mount. */
+    requestStack: 'hud:request-stack',
+    /** renderer → main: dismiss the HUD entirely (clears the stack from view). */
     dismiss: 'hud:dismiss',
-    closeAndDelete: 'hud:close-and-delete',
-    copy: 'hud:copy',
-    saveAs: 'hud:save-as',
-    openInEditor: 'hud:open-in-editor',
+    /** renderer → main: drop one card by id (does NOT delete the file). */
+    dismissCard: 'hud:dismiss-card',
+    /** renderer → main: drop one card AND delete its file from disk. */
+    discardCard: 'hud:discard-card',
+    /** renderer → main: copy one card's image to the clipboard. */
+    copyCard: 'hud:copy-card',
+    /** renderer → main: open Save As dialog for one card. */
+    saveCard: 'hud:save-card',
+    /** renderer → main: open one card in the editor. */
+    openCardInEditor: 'hud:open-card-in-editor',
+    /**
+     * renderer → main (one-way `send`): the user started dragging a card's
+     * image. Main calls `webContents.startDrag` so the file becomes a real
+     * drag-and-drop into other apps (Slack, Mail, Finder, …).
+     */
+    beginDrag: 'hud:begin-drag',
   },
   firstRun: {
     markDone: 'first-run:mark-done',
@@ -127,14 +157,27 @@ export interface SnaporaApi {
     requestCurrent(): Promise<string | null>;
   };
   hud: {
-    onImageReady(handler: (snapUrl: string) => void): () => void;
-    requestCurrent(): Promise<string | null>;
+    /** Subscribe to stack pushes. Handler receives the full updated stack. */
+    onStack(handler: (cards: HudCard[]) => void): () => void;
+    /** Pull the current stack synchronously (e.g. on renderer mount). */
+    requestStack(): Promise<HudCard[]>;
+    /** Hide the HUD without touching files. */
     dismiss(): Promise<void>;
-    /** Discard the capture: deletes the file from disk and dismisses the HUD. */
-    closeAndDelete(): Promise<void>;
-    copy(): Promise<void>;
-    saveAs(): Promise<{ saved: boolean; path: string | null }>;
-    openInEditor(): Promise<void>;
+    /** Drop one card from the stack. File on disk is preserved. */
+    dismissCard(id: number): Promise<void>;
+    /** Drop one card AND delete its file from disk. */
+    discardCard(id: number): Promise<void>;
+    /** Copy one card's image to the clipboard. */
+    copyCard(id: number): Promise<void>;
+    /** Open Save As dialog for one card. */
+    saveCard(id: number): Promise<{ saved: boolean; path: string | null }>;
+    /** Open one card in the editor. */
+    openCardInEditor(id: number): Promise<void>;
+    /**
+     * Tell main to start an OS drag for this card's file. Must be called
+     * synchronously from a `dragstart` event so the OS picks it up.
+     */
+    beginDrag(id: number): void;
   };
   firstRun: {
     markDone(): Promise<void>;

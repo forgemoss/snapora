@@ -8,7 +8,7 @@ import type {
   PermissionState,
   SelectionRect,
 } from '@shared/types';
-import type { SelectionInitPayload, SnaporaApi } from '@shared/ipc';
+import type { HudCard, SelectionInitPayload, SnaporaApi } from '@shared/ipc';
 
 const api: SnaporaApi = {
   capture: (options: CaptureOptions): Promise<CaptureResult> =>
@@ -56,18 +56,23 @@ const api: SnaporaApi = {
     requestCurrent: (): Promise<string | null> => ipcRenderer.invoke(IPC.editor.requestCurrent),
   },
   hud: {
-    onImageReady: (handler: (snapUrl: string) => void) => {
-      const listener = (_evt: unknown, snapUrl: string): void => handler(snapUrl);
-      ipcRenderer.on(IPC.hud.onImageReady, listener);
-      return () => ipcRenderer.removeListener(IPC.hud.onImageReady, listener);
+    onStack: (handler: (cards: HudCard[]) => void) => {
+      const listener = (_evt: unknown, cards: HudCard[]): void => handler(cards);
+      ipcRenderer.on(IPC.hud.onStack, listener);
+      return () => ipcRenderer.removeListener(IPC.hud.onStack, listener);
     },
-    requestCurrent: (): Promise<string | null> => ipcRenderer.invoke(IPC.hud.requestCurrent),
+    requestStack: (): Promise<HudCard[]> => ipcRenderer.invoke(IPC.hud.requestStack),
     dismiss: (): Promise<void> => ipcRenderer.invoke(IPC.hud.dismiss),
-    closeAndDelete: (): Promise<void> => ipcRenderer.invoke(IPC.hud.closeAndDelete),
-    copy: (): Promise<void> => ipcRenderer.invoke(IPC.hud.copy),
-    saveAs: (): Promise<{ saved: boolean; path: string | null }> =>
-      ipcRenderer.invoke(IPC.hud.saveAs),
-    openInEditor: (): Promise<void> => ipcRenderer.invoke(IPC.hud.openInEditor),
+    dismissCard: (id: number): Promise<void> => ipcRenderer.invoke(IPC.hud.dismissCard, id),
+    discardCard: (id: number): Promise<void> => ipcRenderer.invoke(IPC.hud.discardCard, id),
+    copyCard: (id: number): Promise<void> => ipcRenderer.invoke(IPC.hud.copyCard, id),
+    saveCard: (id: number): Promise<{ saved: boolean; path: string | null }> =>
+      ipcRenderer.invoke(IPC.hud.saveCard, id),
+    openCardInEditor: (id: number): Promise<void> =>
+      ipcRenderer.invoke(IPC.hud.openCardInEditor, id),
+    beginDrag: (id: number): void => {
+      ipcRenderer.send(IPC.hud.beginDrag, id);
+    },
   },
   firstRun: {
     markDone: (): Promise<void> => ipcRenderer.invoke(IPC.firstRun.markDone),
