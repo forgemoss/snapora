@@ -152,7 +152,19 @@ function Card({ card }: { card: HudCard }) {
           <Trash2 className="h-3 w-3" />
         </CornerButton>
 
-        {card.width && card.height ? (
+        {card.kind === 'recording' ? (
+          <div className="pointer-events-none absolute left-1.5 bottom-1.5 flex items-center gap-1 rounded bg-red-500/85 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-white">
+            <span className="h-1.5 w-1.5 rounded-full bg-white" />
+            REC
+            {typeof card.durationMs === 'number' ? (
+              <span className="opacity-80">
+                {' '}
+                {Math.floor(card.durationMs / 60000)}:
+                {String(Math.floor((card.durationMs % 60000) / 1000)).padStart(2, '0')}
+              </span>
+            ) : null}
+          </div>
+        ) : card.width && card.height ? (
           <div className="pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 font-mono text-[10px] text-white/80">
             {card.width} × {card.height}
           </div>

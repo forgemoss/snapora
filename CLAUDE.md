@@ -60,8 +60,9 @@ npm run dist        # build + DMG (signed if Apple secrets present)
 For any feature or bug-fix task, Claude should:
 
 1. **Pick the branch.** Propose a name matching the convention (`feat/<area>-<description>` / `fix/...` / `docs/...` / `chore/...`) and create it — don't ask the user to name it.
-2. **Stage commits on that branch.** Conventional Commits, scoped (`feat(brand): ...`).
-3. **End every task with a "Next steps" block** — the explicit commands or actions the user needs to run (push, open PR, tag, merge, etc.). Never leave the user guessing what to do after the code is written.
+2. **One feature = one branch.** When the user asks for a feature, build the whole thing on a single branch in one PR. Don't pre-emptively split into PR-1 / PR-2 / PR-3 "to keep PRs small" — that's extra work the user doesn't want. Plans can still describe phases for clarity, but the implementation lands together.
+3. **Stage commits on that branch.** Conventional Commits, scoped (`feat(brand): ...`).
+4. **End every task with a "Next steps" block** — the explicit commands or actions the user needs to run (push, open PR, tag, merge, etc.). Never leave the user guessing what to do after the code is written.
 
 ## Tooling specific to this project
 

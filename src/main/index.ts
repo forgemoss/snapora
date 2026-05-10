@@ -11,6 +11,7 @@ import { registerSnapProtocol } from '@main/security/protocol';
 import { syncLoginItem } from '@main/storage/loginItem';
 import { getPreferences } from '@main/storage/prefs';
 import { restoreDesktopIconsOnQuit, setDesktopIconsHidden } from '@main/system/desktopIcons';
+import { cancelRecording, isRecording } from '@main/recording/session';
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -42,6 +43,13 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', (event) => {
   unregisterGlobalShortcuts();
+  // Cancel any in-flight recording so we don't leave a dangling ffmpeg or
+  // a half-written file. `cancelRecording` is fire-and-forget and the
+  // child gets SIGINT'd; we intentionally don't wait — quitting is more
+  // important than a clean recording exit if the user is closing the app.
+  if (isRecording()) {
+    void cancelRecording();
+  }
   // If we hid desktop icons during this session, put them back. We delay
   // quit briefly so the Finder restart finishes before the process dies.
   if (getPreferences().hideDesktopIcons) {

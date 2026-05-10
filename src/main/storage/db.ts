@@ -40,6 +40,14 @@ const MIGRATIONS: { name: string; up: string }[] = [
       CREATE INDEX idx_captures_captured_at ON captures(captured_at DESC);
     `,
   },
+  {
+    name: '0002-add-kind-and-duration',
+    up: `
+      ALTER TABLE captures ADD COLUMN kind TEXT NOT NULL DEFAULT 'screenshot';
+      ALTER TABLE captures ADD COLUMN duration_ms INTEGER;
+      CREATE INDEX idx_captures_kind ON captures(kind);
+    `,
+  },
 ];
 
 function applyMigrations(database: Database.Database): void {
@@ -73,6 +81,8 @@ function applyMigrations(database: Database.Database): void {
   }
 }
 
+export type CaptureKind = 'screenshot' | 'recording';
+
 export interface CaptureRow {
   id: number;
   filePath: string;
@@ -80,6 +90,8 @@ export interface CaptureRow {
   mode: CaptureMode;
   width: number | null;
   height: number | null;
+  kind: CaptureKind;
+  durationMs: number | null;
   /** Whether the file still exists on disk (computed at read time, not stored). */
   exists: boolean;
 }
@@ -90,22 +102,30 @@ export interface InsertCaptureInput {
   mode: CaptureMode;
   width: number | null;
   height: number | null;
+  /** Defaults to 'screenshot' if omitted. */
+  kind?: CaptureKind;
+  /** Total duration of a recording in ms; null/undefined for screenshots. */
+  durationMs?: number | null;
 }
 
 export function insertCapture(input: InsertCaptureInput): number {
   const result = getDb()
     .prepare(
-      `INSERT INTO captures (file_path, captured_at, mode, width, height)
-       VALUES (@filePath, @capturedAt, @mode, @width, @height)`,
+      `INSERT INTO captures (file_path, captured_at, mode, width, height, kind, duration_ms)
+       VALUES (@filePath, @capturedAt, @mode, @width, @height, @kind, @durationMs)`,
     )
-    .run(input);
+    .run({
+      ...input,
+      kind: input.kind ?? 'screenshot',
+      durationMs: input.durationMs ?? null,
+    });
   return Number(result.lastInsertRowid);
 }
 
 export function listCaptures(limit = 100): CaptureRow[] {
   const rows = getDb()
     .prepare(
-      `SELECT id, file_path, captured_at, mode, width, height
+      `SELECT id, file_path, captured_at, mode, width, height, kind, duration_ms
        FROM captures
        ORDER BY captured_at DESC
        LIMIT ?`,
@@ -117,6 +137,8 @@ export function listCaptures(limit = 100): CaptureRow[] {
     mode: CaptureMode;
     width: number | null;
     height: number | null;
+    kind: CaptureKind;
+    duration_ms: number | null;
   }>;
   return rows.map((r) => ({
     id: r.id,
@@ -125,6 +147,8 @@ export function listCaptures(limit = 100): CaptureRow[] {
     mode: r.mode,
     width: r.width,
     height: r.height,
+    kind: r.kind,
+    durationMs: r.duration_ms,
     exists: existsSync(r.file_path),
   }));
 }

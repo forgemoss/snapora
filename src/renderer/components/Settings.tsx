@@ -5,6 +5,7 @@ import { cn } from '@renderer/lib/cn';
 import { AboutSettings } from './settings/About';
 import { GeneralSettings } from './settings/General';
 import { QuickAccessSettings } from './settings/QuickAccess';
+import { RecordingSettings } from './settings/Recording';
 import { ShortcutsSettings } from './settings/Shortcuts';
 import { StubSection } from './settings/Stub';
 import { WallpaperSettings } from './settings/Wallpaper';
@@ -36,7 +37,7 @@ const NAV: NavItem[] = [
     icon: <Image className="h-4 w-4" />,
     milestone: 'v0.2',
   },
-  { key: 'recording', label: 'Recording', icon: <Video className="h-4 w-4" />, milestone: 'v0.4' },
+  { key: 'recording', label: 'Recording', icon: <Video className="h-4 w-4" /> },
   {
     key: 'wallpaper',
     label: 'Wallpaper',
@@ -80,9 +81,10 @@ export function Settings() {
           {active === 'general' && <GeneralSettings />}
           {active === 'shortcuts' && <ShortcutsSettings />}
           {active === 'quickAccess' && <QuickAccessSettings />}
+          {active === 'recording' && <RecordingSettings />}
           {active === 'wallpaper' && <WallpaperSettings />}
           {active === 'about' && <AboutSettings />}
-          {activeItem?.milestone && (active === 'screenshot' || active === 'recording') && (
+          {activeItem?.milestone && active === 'screenshot' && (
             <StubSection title={activeItem.label} milestone={activeItem.milestone} />
           )}
         </main>

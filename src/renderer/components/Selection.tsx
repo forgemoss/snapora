@@ -96,6 +96,31 @@ export function SelectionOverlay() {
         backgroundColor: rect ? 'transparent' : 'rgba(0, 0, 0, 0.18)',
       }}
     >
+      {/* Hint banner — only visible before the user starts dragging. */}
+      {!rect ? (
+        <div
+          style={{
+            position: 'fixed',
+            top: '8%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '10px 16px',
+            borderRadius: 999,
+            background: 'rgba(255, 255, 255, 0.95)',
+            color: '#0f172a',
+            fontSize: 14,
+            fontWeight: 500,
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+            letterSpacing: 0.1,
+          }}
+        >
+          Drag to select an area. Press <span style={{ fontFamily: 'ui-monospace' }}>Esc</span> to
+          cancel.
+        </div>
+      ) : null}
+
       {rect && rect.width > 0 && rect.height > 0 ? (
         <>
           <div

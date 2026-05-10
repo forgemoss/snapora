@@ -1,6 +1,7 @@
 import { globalShortcut } from 'electron';
 import logger from '@main/logger';
 import { takeScreenshot } from '@main/capture/screenshot';
+import { isRecording, startRecording, stopRecording } from '@main/recording/session';
 import { showHudWithImage } from '@main/windows/hud';
 import { getPreferences } from '@main/storage/prefs';
 import type { CaptureMode } from '@shared/types';
@@ -27,6 +28,27 @@ export function registerGlobalShortcuts(): void {
       logger.warn(`hotkey: failed to register ${mode} → ${accelerator} (likely conflict)`);
     } else {
       logger.info(`hotkey: registered ${mode} → ${accelerator}`);
+    }
+  }
+
+  // Recording hotkey toggles: start if idle, stop if a session is live. This
+  // is the user's escape hatch when no floating controls bar is shown
+  // (single-display + display/window mode — the bar would land in the
+  // recording, so we don't show it).
+  if (prefs.recordingHotkey) {
+    const ok = globalShortcut.register(prefs.recordingHotkey, () => {
+      if (isRecording()) {
+        void stopRecording();
+      } else {
+        void startRecording({ mode: prefs.recordingDefaultMode });
+      }
+    });
+    if (!ok) {
+      logger.warn(
+        `hotkey: failed to register recording → ${prefs.recordingHotkey} (likely conflict)`,
+      );
+    } else {
+      logger.info(`hotkey: registered recording → ${prefs.recordingHotkey} (toggles start/stop)`);
     }
   }
 }

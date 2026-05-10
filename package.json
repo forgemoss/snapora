@@ -29,7 +29,9 @@
     "e2e": "playwright test",
     "dist": "npm run build && electron-builder --mac",
     "dist:dir": "npm run build && electron-builder --mac --dir",
-    "postinstall": "electron-builder install-app-deps"
+    "prepare:resources": "node scripts/prepare-resources.mjs",
+    "prepare:resources:all": "node scripts/prepare-resources.mjs --all-archs",
+    "postinstall": "node scripts/prepare-resources.mjs && electron-builder install-app-deps"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
@@ -44,6 +46,7 @@
     "react-dom": "^19.0.0",
     "react-konva": "^19.0.0",
     "tailwind-merge": "^3.5.0",
+    "uiohook-napi": "^1.5.5",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

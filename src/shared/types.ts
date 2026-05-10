@@ -124,9 +124,138 @@ export interface AppPreferences {
    */
   useCustomSelectionOverlay: boolean;
 
+  // ----- Recording -----
+  /** Frame rate for new recordings. */
+  recordingFramerate: 24 | 30 | 60;
+  /** Quality bucket → ffmpeg `-b:v` (Standard 4M / High 8M / Best 16M). */
+  recordingQuality: 'standard' | 'high' | 'best';
+  /** Output container — only `mp4` for v0.4. */
+  recordingFormat: 'mp4';
+  /** Folder where recordings are saved (resolves to ~/Movies/Snapora at runtime). */
+  recordingSaveDirectory: string;
+  /** Default mode when the user clicks "Record Screen". */
+  recordingDefaultMode: 'region' | 'display' | 'window';
+  /** Hotkey to start a recording (or stop one in flight). */
+  recordingHotkey: string;
+  /** Auto-toggle Do Not Disturb at recording start. */
+  recordingHideNotifications: boolean;
+  /** Countdown (seconds) before recording starts. 0 = no countdown. */
+  recordingCountdownSeconds: 0 | 3 | 5 | 10;
+
+  /** Show the floating controls bar while recording (timer + stop / pause / restart / trash). */
+  recordingShowControls: boolean;
+  /** Dim the screen outside the recording region during a region recording. */
+  recordingDimScreen: boolean;
+  /** Persist the last region the user selected so the next region recording starts there. */
+  recordingRememberLastSelection: boolean;
+  /** Last-used region (DIPs) when `recordingRememberLastSelection` is on. */
+  recordingLastRegion: SelectionRect | null;
+  /** Preserve the cursor in the captured video. macOS captures it by default. */
+  recordingShowCursor: boolean;
+  /** Auto-open the editor for the saved recording on stop. */
+  recordingOpenEditorAfter: boolean;
+
+  /** Cap the recorded video's longest edge in pixels. `null` = original. */
+  recordingMaxResolution: 720 | 1080 | 1440 | 2160 | null;
+  /** Record audio in mono (smaller file, fine for most narration). */
+  recordingAudioMono: boolean;
+
+  /** Frame rate of the GIF post-process. */
+  recordingGifFps: 10 | 15 | 24 | 30;
+  /** Bayer dither scale: smaller = sharper but bigger file. 1–5. */
+  recordingGifQuality: 1 | 2 | 3 | 4 | 5;
+  /** Cap the GIF's longest edge in pixels. `null` = original. */
+  recordingGifMaxWidth: 480 | 640 | 800 | 1280 | null;
+
+  /** Capture from the system mic during the recording. */
+  recordingMicrophone: boolean;
+  /** Preferred mic device label (matches avfoundation enumeration). */
+  recordingMicrophoneDevice: string;
+
+  /** Show the floating webcam preview during recording (and bake it into the file). */
+  recordingWebcamEnabled: boolean;
+  /** Preferred camera device label. */
+  recordingWebcamDevice: string;
+  recordingWebcamPosition: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  recordingWebcamSize: 'small' | 'medium' | 'large';
+  recordingWebcamShape: 'rectangle' | 'rounded' | 'circle';
+  recordingWebcamMirrored: boolean;
+  recordingWebcamFullscreen: boolean;
+
+  /** Highlight the cursor on click (drawn into the recorded video). */
+  recordingCaptureClicks: boolean;
+  recordingClickColor: string; // hex
+  recordingClickSize: 'small' | 'medium' | 'large';
+  recordingClickStyle: 'outline' | 'filled';
+  recordingClickAnimated: boolean;
+
+  /** Show the keys the user pressed (drawn into the recorded video). */
+  recordingCaptureKeystrokes: boolean;
+  recordingKeyPosition:
+    | 'top-left'
+    | 'top-center'
+    | 'top-right'
+    | 'bottom-left'
+    | 'bottom-center'
+    | 'bottom-right';
+  recordingKeySize: 'small' | 'medium' | 'large';
+  recordingKeyStyle: 'dark' | 'light';
+  /** When true, only show the pill while a modifier (⌘/⌥/⌃/⇧) is held. */
+  recordingKeyOnlyCommandKeys: boolean;
+
   // ----- Shortcuts -----
   /** Global hotkey strings (Electron accelerator format) per capture mode. */
   hotkeys: Record<CaptureMode, string>;
+}
+
+/** Public types for the recording pipeline (consumed by IPC + renderer). */
+export type RecordingMode = 'region' | 'display' | 'window';
+
+export interface RecordingOptions {
+  mode: RecordingMode;
+  /** Pre-resolved region — when omitted in `region` mode, the selection overlay opens. */
+  region?: SelectionRect;
+  displayId?: number;
+
+  /**
+   * Output format. `mp4` saves directly. `gif` records mp4 then post-processes
+   * via ffmpeg's palettegen/paletteuse to produce a GIF and discards the mp4.
+   */
+  output?: 'mp4' | 'gif';
+
+  // Per-recording overrides; if omitted, the user's prefs are used.
+  recordMicrophone?: boolean;
+  recordWebcam?: boolean;
+  captureClicks?: boolean;
+  captureKeystrokes?: boolean;
+  hideNotifications?: boolean;
+  framerate?: AppPreferences['recordingFramerate'];
+  quality?: AppPreferences['recordingQuality'];
+}
+
+export interface RecordingResult {
+  filePath: string | null;
+  cancelled: boolean;
+  durationMs: number;
+  startedAt: string;
+  endedAt: string;
+}
+
+export type RecordingPhase =
+  | 'idle'
+  | 'countdown'
+  | 'recording'
+  | 'paused'
+  | 'stopping'
+  | 'finalizing'
+  | 'failed';
+
+export interface RecordingStateSnapshot {
+  phase: RecordingPhase;
+  sessionId: string | null;
+  startedAt: number | null;
+  durationMs: number;
+  error?: string;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -150,6 +279,51 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   hudAutoCloseEnabled: true,
   hudAutoCloseSeconds: 6,
   useCustomSelectionOverlay: true,
+
+  recordingFramerate: 30,
+  recordingQuality: 'high',
+  recordingFormat: 'mp4',
+  recordingSaveDirectory: '',
+  recordingDefaultMode: 'region',
+  recordingHotkey: 'CommandOrControl+Shift+5',
+  recordingHideNotifications: false,
+  recordingCountdownSeconds: 3,
+
+  recordingShowControls: true,
+  recordingDimScreen: true,
+  recordingRememberLastSelection: false,
+  recordingLastRegion: null,
+  recordingShowCursor: true,
+  recordingOpenEditorAfter: false,
+  recordingMaxResolution: null,
+  recordingAudioMono: false,
+  recordingGifFps: 15,
+  recordingGifQuality: 5,
+  recordingGifMaxWidth: 800,
+
+  recordingMicrophone: false,
+  recordingMicrophoneDevice: '',
+
+  recordingWebcamEnabled: false,
+  recordingWebcamDevice: '',
+  recordingWebcamPosition: 'bottom-right',
+  recordingWebcamSize: 'medium',
+  recordingWebcamShape: 'circle',
+  recordingWebcamMirrored: true,
+  recordingWebcamFullscreen: false,
+
+  recordingCaptureClicks: false,
+  recordingClickColor: '#3b82f6',
+  recordingClickSize: 'medium',
+  recordingClickStyle: 'outline',
+  recordingClickAnimated: true,
+
+  recordingCaptureKeystrokes: false,
+  recordingKeyPosition: 'bottom-center',
+  recordingKeySize: 'medium',
+  recordingKeyStyle: 'dark',
+  recordingKeyOnlyCommandKeys: true,
+
   hotkeys: {
     area: 'CommandOrControl+Shift+2',
     window: 'CommandOrControl+Shift+3',

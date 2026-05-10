@@ -1,9 +1,12 @@
 import { Check, FolderOpen, ImageIcon, Loader2, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { WindowChrome, WindowShell } from './Layout';
+import { VideoEditor } from './editor/VideoEditor';
 import { Button } from './ui/button';
 import { cn } from '@renderer/lib/cn';
 import type { EditorAlignment, EditorBackgroundConfig } from '@shared/ipc';
+
+type EditorKind = 'image' | 'video' | 'gif';
 
 /**
  * Background tool. Pick a color / gradient / custom image to wrap around
@@ -137,6 +140,7 @@ function paddingForAlignment(
 
 export function Editor() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [kind, setKind] = useState<EditorKind | null>(null);
   const [bgKind, setBgKind] = useState<BgKind>('none');
   const [color, setColor] = useState('#0f172a');
   const [gradient, setGradient] = useState<string>(GRADIENT_PRESETS[0]?.css ?? '');
@@ -149,10 +153,14 @@ export function Editor() {
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    const off = window.snapora.editor.onImageReady((url) => setImageUrl(url));
+    const off = window.snapora.editor.onImageReady((url) => {
+      setImageUrl(url);
+      void window.snapora.editor.requestKind().then(setKind);
+    });
     void window.snapora.editor.requestCurrent().then((url) => {
       if (url) setImageUrl(url);
     });
+    void window.snapora.editor.requestKind().then(setKind);
     return off;
   }, []);
 
@@ -176,6 +184,13 @@ export function Editor() {
   );
 
   const previewFlex = useMemo(() => alignmentToFlex(alignment), [alignment]);
+
+  // Videos and GIFs get their own editor view (player + trim + export). The
+  // Background tool below is for static images only. We compute every hook
+  // above so React's hook order stays stable across renders.
+  if (imageUrl && (kind === 'video' || kind === 'gif')) {
+    return <VideoEditor srcUrl={imageUrl} kind={kind} />;
+  }
 
   const pickImage = async (): Promise<void> => {
     const path = await window.snapora.wallpaper.chooseImage();

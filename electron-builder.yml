@@ -15,10 +15,16 @@ files:
   - '!**/{tsconfig*.json,vite.config.*,vitest.config.*,playwright.config.*}'
   - '!**/{.eslintrc*,.prettierrc*,eslint.config.*}'
 
-# extraResources for bundled binaries (ffmpeg, tesseract, etc.) is wired up
-# from v0.4 onward — the resources/bin folder doesn't exist yet, and
-# pointing at a missing source breaks `electron-builder` packaging. Re-add
-# this block once those binaries land in resources/bin.
+# Bundled binaries — fetched by `npm run prepare:resources` from the
+# upstream URLs pinned in scripts/manifest.json. Per-arch builds: each DMG
+# only carries the matching ffmpeg-{arch} binary.
+extraResources:
+  - from: resources/bin/ffmpeg-${arch}
+    to: bin/ffmpeg
+    fileMode: 0o755
+  - from: resources/ffmpeg/LICENSE
+    to: ffmpeg/LICENSE
+
 asar: true
 
 mac:

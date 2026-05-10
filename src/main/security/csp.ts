@@ -19,6 +19,9 @@ export function installContentSecurityPolicy(): void {
     `script-src 'self'${isDev ? " 'unsafe-eval' 'unsafe-inline'" : ''}`,
     "style-src 'self' 'unsafe-inline'", // Tailwind + React inline-style
     "img-src 'self' data: blob: snap:",
+    // The editor and HUD play .mp4 / .gif from the snap:// scheme; CSP needs
+    // media-src explicitly because <video> falls back to default-src otherwise.
+    "media-src 'self' blob: snap:",
     "font-src 'self' data:",
     `connect-src 'self'${isDev ? ' ws://localhost:* http://localhost:* https://localhost:*' : ''}`,
     "object-src 'none'",
@@ -29,11 +32,17 @@ export function installContentSecurityPolicy(): void {
   const csp = directives.join('; ');
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [csp],
-      },
-    });
+    // Strip any existing CSP header before adding ours. HTTP headers are
+    // case-insensitive but Node objects aren't — Vite (or other upstream)
+    // sometimes returns `content-security-policy` lowercased, which would
+    // sit alongside our `Content-Security-Policy` and the browser merges
+    // multiple policies into the *most restrictive* — silently dropping
+    // our `media-src` allowance for snap://.
+    const headers: Record<string, string | string[]> = {};
+    for (const [k, v] of Object.entries(details.responseHeaders ?? {})) {
+      if (k.toLowerCase() !== 'content-security-policy') headers[k] = v;
+    }
+    headers['Content-Security-Policy'] = [csp];
+    callback({ responseHeaders: headers });
   });
 }

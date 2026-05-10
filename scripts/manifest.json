@@ -1,0 +1,16 @@
+{
+  "_comment": "Pinned upstream binaries fetched by scripts/prepare-resources.mjs. The first time the script runs against an empty `sha256`, it downloads, computes the hash, and writes it back here. After that, subsequent runs hard-fail if the upstream sha doesn't match. Bump the version + clear the sha to upgrade.",
+  "ffmpeg": {
+    "version": "7.1",
+    "license": "LGPL-2.1-or-later",
+    "homepage": "https://evermeet.cx/ffmpeg/",
+    "arm64": {
+      "url": "https://evermeet.cx/ffmpeg/ffmpeg-7.1.zip",
+      "sha256": "31b54ce40088787bc967d9938863a28a6bed0fdf54c42f51f04e1e178b35d536"
+    },
+    "x64": {
+      "url": "https://evermeet.cx/ffmpeg/ffmpeg-7.1.zip",
+      "sha256": ""
+    }
+  }
+}

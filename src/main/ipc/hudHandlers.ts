@@ -52,9 +52,22 @@ export function registerHudHandlers(): void {
     logger.info('hud: save card', { id, filePath: card?.filePath });
     if (!card) return { saved: false, path: null };
     const focused = BrowserWindow.getFocusedWindow();
+    // Pick filters from the actual file extension — recordings save as .mp4
+    // / .gif, screenshots as .png / .jpg. Hardcoding PNG here was suggesting
+    // the wrong extension for video saves.
+    const ext = card.filePath.split('.').pop()?.toLowerCase() ?? 'png';
+    const filterMap: Record<string, { name: string; extensions: string[] }> = {
+      png: { name: 'PNG image', extensions: ['png'] },
+      jpg: { name: 'JPEG image', extensions: ['jpg', 'jpeg'] },
+      jpeg: { name: 'JPEG image', extensions: ['jpg', 'jpeg'] },
+      mp4: { name: 'MP4 video', extensions: ['mp4'] },
+      mov: { name: 'QuickTime video', extensions: ['mov'] },
+      gif: { name: 'GIF', extensions: ['gif'] },
+    };
+    const filter = filterMap[ext] ?? { name: ext.toUpperCase(), extensions: [ext] };
     const result = await dialog.showSaveDialog(focused ?? new BrowserWindow({ show: false }), {
       defaultPath: basename(card.filePath),
-      filters: [{ name: 'PNG', extensions: ['png'] }],
+      filters: [filter],
     });
     if (result.canceled || !result.filePath) return { saved: false, path: null };
     await copyFile(card.filePath, result.filePath);

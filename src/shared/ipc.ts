@@ -5,6 +5,9 @@ import type {
   PermissionState,
   AppPreferences,
   SelectionRect,
+  RecordingOptions,
+  RecordingResult,
+  RecordingStateSnapshot,
 } from './types';
 
 /**
@@ -38,12 +41,21 @@ export interface HistoryItem {
  */
 export interface HudCard {
   id: number;
+  /** Path to the actual file the user captured (image OR video). */
   filePath: string;
-  /** snap:// URL the renderer can load directly. */
+  /**
+   * snap:// URL the renderer paints. For screenshots this is `filePath`;
+   * for recordings this is a generated still-frame thumbnail PNG sitting
+   * next to the .mp4, so the HUD doesn't have to play the video.
+   */
   snapUrl: string;
   width: number | null;
   height: number | null;
   capturedAt: string;
+  /** 'screenshot' (default) or 'recording'. */
+  kind?: 'screenshot' | 'recording';
+  /** Total duration of the recording in ms (recordings only). */
+  durationMs?: number | null;
 }
 
 export type EditorAlignment =
@@ -83,6 +95,15 @@ export interface EditorBackgroundConfig {
 export interface EditorComposeResult {
   /** Updated snap:// URL (cache-busted with `?v=`) for the renderer to reload. */
   snapUrl: string;
+}
+
+export interface WindowPickerSource {
+  id: string;
+  name: string;
+  appIcon: string | null;
+  thumbnail: string;
+  /** Display id this window is on (matches `screen.getAllDisplays()`); may be empty. */
+  displayId: string;
 }
 
 /**
@@ -128,6 +149,12 @@ export const IPC = {
     compose: 'editor:compose',
     /** Open a file dialog and load the picked image into the editor. */
     openFile: 'editor:open-file',
+    /** Pull the kind ('image' / 'video' / 'gif') of the current media. */
+    requestKind: 'editor:request-kind',
+    /** Trim the loaded video to [startSeconds, endSeconds] and replace in place. */
+    trimVideo: 'editor:trim-video',
+    /** Export the loaded video as a GIF next to the original. */
+    exportGif: 'editor:export-gif',
   },
   hud: {
     /** main → renderer: a fresh card just landed; full stack is sent. */
@@ -152,6 +179,66 @@ export const IPC = {
      * drag-and-drop into other apps (Slack, Mail, Finder, …).
      */
     beginDrag: 'hud:begin-drag',
+  },
+  recording: {
+    /** renderer → main: start a recording. */
+    start: 'recording:start',
+    /** renderer → main: graceful stop. */
+    stop: 'recording:stop',
+    /** renderer → main: discard mid-recording. */
+    cancel: 'recording:cancel',
+    /** renderer → main: pause the active recording (segment saved). */
+    pause: 'recording:pause',
+    /** renderer → main: resume from paused state. */
+    resume: 'recording:resume',
+    /** renderer → main: discard segments and start over from t=0. */
+    restart: 'recording:restart',
+    /** renderer → main: pull the current state snapshot. */
+    state: 'recording:state',
+    /** main → renderer: state-machine transition. */
+    onState: 'recording:on-state',
+    /** main → controls renderer: timer tick (every 1s). */
+    onTick: 'recording:on-tick',
+    /** main → effects renderer: push the user's per-effect prefs. */
+    onEffectsConfig: 'recording:on-effects-config',
+    /** main → effects renderer: a global mouse-down landed. */
+    onClickEvent: 'recording:on-click',
+    /** main → effects renderer: a global keydown landed. */
+    onKeyEvent: 'recording:on-key',
+    /** main → webcam renderer: webcam config push. */
+    onWebcamPrefs: 'recording:on-webcam-prefs',
+    /** renderer → main: list available cameras / mics for Settings. */
+    listDevices: 'recording:list-devices',
+    /** main → stage renderer: pass region + initial settings on mount. */
+    onStageInit: 'recording:on-stage-init',
+    /** stage renderer → main: pull the pending stage init (avoids ready-to-show race). */
+    stageGetInit: 'recording:stage-get-init',
+    /** stage renderer → main: user clicked Record GIF / Record Video. */
+    stageCommit: 'recording:stage-commit',
+    /** stage renderer → main: user closed the stage without recording. */
+    stageCancel: 'recording:stage-cancel',
+    /** window-picker renderer → main: list available capturable windows. */
+    windowPickerList: 'recording:window-picker-list',
+    /** window-picker renderer → main: user clicked a window thumbnail. */
+    windowPickerPick: 'recording:window-picker-pick',
+    /** window-picker renderer → main: user dismissed the picker. */
+    windowPickerCancel: 'recording:window-picker-cancel',
+    /** stage renderer → main: open the mic device-picker native menu. */
+    stageMicMenu: 'recording:stage-mic-menu',
+    /** stage renderer → main: open the camera device-picker native menu. */
+    stageCameraMenu: 'recording:stage-camera-menu',
+    /** stage renderer → main: show the small webcam preview overlay. */
+    stageWebcamPreviewShow: 'recording:stage-webcam-preview-show',
+    /** stage renderer → main: hide the webcam preview overlay. */
+    stageWebcamPreviewHide: 'recording:stage-webcam-preview-hide',
+    /** stage renderer → main: cancel current stage AND open Settings. */
+    stageOpenSettings: 'recording:stage-open-settings',
+    /** stage renderer → main: cancel current stage AND start a different mode. */
+    stageSwitchMode: 'recording:stage-switch-mode',
+    /** stage renderer → main: show the click+keystroke preview overlay. */
+    stageEffectsPreviewShow: 'recording:stage-effects-preview-show',
+    /** stage renderer → main: hide the click+keystroke preview overlay. */
+    stageEffectsPreviewHide: 'recording:stage-effects-preview-hide',
   },
   firstRun: {
     markDone: 'first-run:mark-done',
@@ -209,6 +296,15 @@ export interface SnaporaApi {
      * Returns the new snap:// URL, or null if the user cancelled.
      */
     openFile(): Promise<string | null>;
+    /** Pull the kind of the current media (image / video / gif). */
+    requestKind(): Promise<'image' | 'video' | 'gif' | null>;
+    /** Trim the loaded video. */
+    trimVideo(args: {
+      startSeconds: number;
+      endSeconds: number;
+    }): Promise<{ snapUrl: string; filePath: string }>;
+    /** Export the loaded video as a GIF next to the original. */
+    exportGif(): Promise<{ filePath: string; snapUrl: string }>;
   };
   hud: {
     /** Subscribe to stack pushes. Handler receives the full updated stack. */
@@ -232,6 +328,54 @@ export interface SnaporaApi {
      * synchronously from a `dragstart` event so the OS picks it up.
      */
     beginDrag(id: number): void;
+  };
+  recording: {
+    start(opts: RecordingOptions): Promise<{ sessionId: string } | null>;
+    stop(): Promise<RecordingResult>;
+    cancel(): Promise<void>;
+    pause(): Promise<void>;
+    resume(): Promise<void>;
+    restart(): Promise<void>;
+    state(): Promise<RecordingStateSnapshot>;
+    onState(handler: (snap: RecordingStateSnapshot) => void): () => void;
+    onTick(handler: (payload: { durationMs: number }) => void): () => void;
+    onEffectsConfig(handler: (cfg: unknown) => void): () => void;
+    onClickEvent(handler: (e: { x: number; y: number }) => void): () => void;
+    onKeyEvent(handler: (e: unknown) => void): () => void;
+    onWebcamPrefs(handler: (prefs: unknown) => void): () => void;
+    listDevices(): Promise<{ cameras: string[]; mics: string[] }>;
+    onStageInit(handler: (init: unknown) => void): () => void;
+    stageGetInit(): Promise<unknown>;
+    stageCommit(result: {
+      output: 'mp4' | 'gif';
+      recordMicrophone: boolean;
+      recordWebcam: boolean;
+      captureClicks: boolean;
+      captureKeystrokes: boolean;
+    }): void;
+    stageCancel(): void;
+    windowPickerList(): Promise<WindowPickerSource[]>;
+    windowPickerPick(sourceId: string): void;
+    windowPickerCancel(): void;
+    /**
+     * Pop the native mic device menu next to the stage toolbar's mic icon.
+     * Returns: `string` = picked device label (renderer should activate),
+     * `undefined` = user dismissed the menu. Toggle on/off is handled by
+     * the toggle icon click, not the menu.
+     */
+    stageMicMenu(currentLabel: string | null): Promise<string | undefined>;
+    stageCameraMenu(currentLabel: string | null): Promise<string | undefined>;
+    stageWebcamPreviewShow(regionBounds: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }): void;
+    stageWebcamPreviewHide(): void;
+    stageOpenSettings(): Promise<void>;
+    stageSwitchMode(mode: 'region' | 'display' | 'window'): Promise<void>;
+    stageEffectsPreviewShow(args: { wantClicks: boolean; wantKeys: boolean }): void;
+    stageEffectsPreviewHide(): void;
   };
   firstRun: {
     markDone(): Promise<void>;

@@ -2,6 +2,14 @@ import { Menu, Tray, app, nativeImage, shell } from 'electron';
 import { join } from 'node:path';
 import logger from '@main/logger';
 import { takeScreenshot } from '@main/capture/screenshot';
+import {
+  cancelRecording,
+  getRecordingState,
+  isRecording,
+  recordingEvents,
+  startRecording,
+  stopRecording,
+} from '@main/recording/session';
 import { openEditorEmpty } from '@main/windows/editor';
 import { showHudWithImage } from '@main/windows/hud';
 import { openHistoryWindow } from '@main/windows/history';
@@ -21,6 +29,35 @@ export function createTray(): Tray {
   if (!hasIcon) tray.setTitle('Snapora');
   tray.setToolTip('Snapora — capture, annotate, share');
   rebuildTrayMenu();
+
+  // Recording transitions flip the menu between Start ↔ Stop and toggle the
+  // tray title text so the user can see at a glance that recording is live.
+  // The format mirrors macOS Screenshot.app's recording indicator and includes
+  // the live duration ticking up — primary feedback channel when the floating
+  // controls bar is hidden (single-display + display/window mode).
+  recordingEvents.on('state', () => {
+    const state = getRecordingState();
+    if (state.phase === 'recording') {
+      tray?.setTitle(`🔴 ${formatDurationShort(state.durationMs)}`);
+    } else if (state.phase === 'paused') {
+      tray?.setTitle(`⏸ ${formatDurationShort(state.durationMs)}`);
+    } else {
+      tray?.setTitle(hasIcon ? '' : 'Snapora');
+    }
+    rebuildTrayMenu();
+  });
+
+  // Tick once a second so the tray duration counts up live — keeps the user
+  // oriented when the floating bar is hidden (single-display fullscreen).
+  recordingEvents.on('tick', ({ durationMs }: { durationMs: number }) => {
+    const state = getRecordingState();
+    if (state.phase === 'recording') {
+      tray?.setTitle(`🔴 ${formatDurationShort(durationMs)}`);
+    } else if (state.phase === 'paused') {
+      tray?.setTitle(`⏸ ${formatDurationShort(durationMs)}`);
+    }
+  });
+
   logger.info('tray: created', { hasIcon });
   return tray;
 }
@@ -59,7 +96,39 @@ export function rebuildTrayMenu(): void {
       })),
     },
     { label: 'Capture Text (OCR)', enabled: false, sublabel: 'v0.5' },
-    { label: 'Record Screen', enabled: false, sublabel: 'v0.4' },
+    isRecording()
+      ? {
+          label: 'Stop Recording',
+          accelerator: prefs.recordingHotkey,
+          click: () => void stopRecording(),
+        }
+      : {
+          label: 'Record Screen',
+          // Submenu gives explicit Region / Window / Display entry points like
+          // CleanShot. The hotkey accelerator triggers the user's configured
+          // default mode (registered in shortcuts/index.ts).
+          submenu: [
+            {
+              label: 'Record Area…',
+              accelerator: prefs.recordingHotkey,
+              click: () => void startRecording({ mode: 'region' }),
+            },
+            {
+              label: 'Record Window…',
+              click: () => void startRecording({ mode: 'window' }),
+            },
+            {
+              label: 'Record Full Screen',
+              click: () => void startRecording({ mode: 'display' }),
+            },
+          ],
+        },
+    isRecording()
+      ? {
+          label: 'Cancel Recording',
+          click: () => void cancelRecording(),
+        }
+      : { label: 'Cancel Recording', enabled: false, visible: false },
     { type: 'separator' },
     {
       label: 'Hide Desktop Icons',
@@ -94,6 +163,13 @@ export function rebuildTrayMenu(): void {
     { label: 'Quit Snapora', accelerator: 'CommandOrControl+Q', role: 'quit' },
   ]);
   tray.setContextMenu(menu);
+}
+
+function formatDurationShort(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 async function toggleDesktopIcons(): Promise<void> {

@@ -1,6 +1,9 @@
+import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { BrowserWindow, nativeImage, screen } from 'electron';
 import { join } from 'node:path';
 import logger from '@main/logger';
+import { ensureFfmpegAvailable } from '@main/capture/binaries';
 import { toSnapUrl } from '@main/security/protocol';
 import { getPreferences } from '@main/storage/prefs';
 import { IPC, type HudCard } from '@shared/ipc';
@@ -190,6 +193,85 @@ export function dismissHud(): void {
   if (hudWindow && !hudWindow.isDestroyed()) {
     hudWindow.hide();
   }
+}
+
+/**
+ * Push a recording onto the HUD stack. The thumbnail is a still frame
+ * extracted by ffmpeg (`-ss 1 -frames:v 1`); we paint that in the HUD card
+ * with a small REC badge instead of trying to play the video.
+ */
+export async function showHudWithVideo(filePath: string, durationMs: number): Promise<void> {
+  const thumbPath = join(tmpdir(), `snapora-hud-thumb-${Date.now()}.png`);
+  let thumbReady = false;
+  try {
+    const ffmpeg = ensureFfmpegAvailable();
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn(
+        ffmpeg,
+        [
+          '-hide_banner',
+          '-loglevel',
+          'error',
+          '-ss',
+          '1',
+          '-i',
+          filePath,
+          '-frames:v',
+          '1',
+          '-y',
+          thumbPath,
+        ],
+        { stdio: 'ignore' },
+      );
+      proc.on('error', reject);
+      proc.on('exit', (code) =>
+        code === 0 ? resolve() : reject(new Error(`ffmpeg thumb exit ${code}`)),
+      );
+    });
+    thumbReady = true;
+  } catch (err) {
+    logger.warn('hud: video thumbnail extraction failed', err);
+  }
+
+  const previewSource = thumbReady ? thumbPath : filePath;
+  const previewImg = nativeImage.createFromPath(previewSource);
+  const size = previewImg.isEmpty() ? null : previewImg.getSize();
+  const card: HudCard = {
+    id: nextCardId++,
+    filePath,
+    // The renderer's <img src=...> uses the snap:// scheme so we can load
+    // local files cleanly. Point at the thumbnail PNG (which lives in tmp)
+    // so we don't have to make snap:// understand .mp4 streaming.
+    snapUrl: toSnapUrl(thumbReady ? thumbPath : filePath),
+    width: size?.width ?? null,
+    height: size?.height ?? null,
+    capturedAt: new Date().toISOString(),
+    kind: 'recording',
+    durationMs,
+  };
+
+  stack = [card, ...stack].slice(0, HUD_MAX_STACK);
+
+  if (!hudWindow || hudWindow.isDestroyed()) {
+    const prefs = getPreferences();
+    const initialHeight = totalHeightForStack(stack.length, prefs);
+    hudWindow = createHudWindow(initialHeight, prefs);
+  }
+  resizeAndPosition();
+  const send = (): void => {
+    broadcastStack();
+    hudWindow?.show();
+  };
+  if (hudWindow.webContents.isLoading()) {
+    hudWindow.webContents.once('did-finish-load', send);
+  } else {
+    send();
+  }
+  logger.info('hud: recording pushed', {
+    id: card.id,
+    durationMs,
+    filePath,
+  });
 }
 
 /** Read the current stack — handlers read this directly. */

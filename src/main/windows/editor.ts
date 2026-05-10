@@ -1,6 +1,10 @@
+import { spawn } from 'node:child_process';
+import { copyFile, unlink } from 'node:fs/promises';
 import { BrowserWindow, dialog, shell } from 'electron';
-import { join } from 'node:path';
+import { dirname, extname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import logger from '@main/logger';
+import { ensureFfmpegAvailable } from '@main/capture/binaries';
 import { compositeWindowOnBackground } from '@main/capture/compositor';
 import { toSnapUrl } from '@main/security/protocol';
 import { IPC, type EditorBackgroundConfig, type EditorComposeResult } from '@shared/ipc';
@@ -9,9 +13,26 @@ let editorWindow: BrowserWindow | null = null;
 let currentImageUrl: string | null = null;
 let currentImagePath: string | null = null;
 
-/** Returns the most recent image URL pushed to the editor, or null. */
+const VIDEO_EXTS = new Set(['.mp4', '.mov', '.m4v']);
+
+export type EditorMediaKind = 'image' | 'video' | 'gif';
+
+export function kindForPath(path: string): EditorMediaKind {
+  const ext = extname(path).toLowerCase();
+  if (VIDEO_EXTS.has(ext)) return 'video';
+  if (ext === '.gif') return 'gif';
+  return 'image';
+}
+
+/** Returns the most recent media URL pushed to the editor, or null. */
 export function getCurrentEditorImageUrl(): string | null {
   return currentImageUrl;
+}
+
+/** Returns the kind of the current media (image / video / gif). */
+export function getCurrentEditorKind(): EditorMediaKind | null {
+  if (!currentImagePath) return null;
+  return kindForPath(currentImagePath);
 }
 
 function rendererUrl(file: string): string {
@@ -141,22 +162,195 @@ export async function composeEditorImage(
 }
 
 /**
- * Pop a file dialog, load the picked image into the editor, and return
- * its snap:// URL. Used by the empty-state "Open file…" button so users
- * can edit existing screenshots without re-capturing.
+ * Pop a file dialog, load the picked image / video into the editor, and
+ * return its snap:// URL. Used by the empty-state "Open file…" button so
+ * users can edit existing media without re-capturing.
  */
 export async function openFileInEditor(): Promise<string | null> {
   const focused = BrowserWindow.getFocusedWindow();
   const result = await dialog.showOpenDialog(focused ?? new BrowserWindow({ show: false }), {
     properties: ['openFile'],
-    title: 'Open image in editor',
-    filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'heic', 'tif', 'tiff'] }],
+    title: 'Open image or video in editor',
+    filters: [
+      {
+        name: 'Media',
+        extensions: ['png', 'jpg', 'jpeg', 'heic', 'tif', 'tiff', 'gif', 'mp4', 'mov', 'm4v'],
+      },
+    ],
   });
   if (result.canceled || result.filePaths.length === 0) return null;
   const path = result.filePaths[0];
   if (!path) return null;
   showEditorWithImage(path);
   return currentImageUrl;
+}
+
+/**
+ * Trim the currently-loaded video down to `[startS, endS]`. Stream-copies
+ * when possible (zero-loss, fast). Replaces the file in place.
+ *
+ * Throws if there's no video loaded.
+ */
+export async function trimEditorVideo(args: {
+  startSeconds: number;
+  endSeconds: number;
+}): Promise<{ snapUrl: string; filePath: string }> {
+  if (!currentImagePath) throw new Error('editor: trim requested but no media loaded');
+  const kind = kindForPath(currentImagePath);
+  if (kind !== 'video' && kind !== 'gif') {
+    throw new Error(`editor: trim only works on videos, got kind=${kind}`);
+  }
+  const ffmpeg = ensureFfmpegAvailable();
+  const ext = extname(currentImagePath);
+  const outPath = join(tmpdir(), `snapora-trim-${Date.now()}${ext}`);
+  const duration = Math.max(0.1, args.endSeconds - args.startSeconds);
+  // For videos: try stream copy first (instant, no quality loss). GIFs and
+  // any failing copy fall through to a re-encode.
+  const tryArgs =
+    kind === 'video'
+      ? [
+          [
+            '-hide_banner',
+            '-loglevel',
+            'error',
+            '-ss',
+            String(args.startSeconds),
+            '-i',
+            currentImagePath,
+            '-t',
+            String(duration),
+            '-c',
+            'copy',
+            '-y',
+            outPath,
+          ],
+          [
+            '-hide_banner',
+            '-loglevel',
+            'error',
+            '-ss',
+            String(args.startSeconds),
+            '-i',
+            currentImagePath,
+            '-t',
+            String(duration),
+            '-c:v',
+            'h264_videotoolbox',
+            '-c:a',
+            'aac',
+            '-y',
+            outPath,
+          ],
+        ]
+      : [
+          // GIFs need a re-encode anyway.
+          [
+            '-hide_banner',
+            '-loglevel',
+            'error',
+            '-ss',
+            String(args.startSeconds),
+            '-i',
+            currentImagePath,
+            '-t',
+            String(duration),
+            '-y',
+            outPath,
+          ],
+        ];
+  let ok = false;
+  for (const av of tryArgs) {
+    ok = await new Promise<boolean>((resolve) => {
+      const proc = spawn(ffmpeg, av, { stdio: 'ignore' });
+      proc.on('error', () => resolve(false));
+      proc.on('exit', (code) => resolve(code === 0));
+    });
+    if (ok) break;
+  }
+  if (!ok) {
+    void unlink(outPath).catch(() => {});
+    throw new Error('editor: trim failed (ffmpeg)');
+  }
+  // Move the trimmed file over the original.
+  await copyFile(outPath, currentImagePath);
+  void unlink(outPath).catch(() => {});
+  const fresh = cacheBust(toSnapUrl(currentImagePath));
+  currentImageUrl = fresh;
+  logger.info('editor: video trimmed', {
+    filePath: currentImagePath,
+    startSeconds: args.startSeconds,
+    endSeconds: args.endSeconds,
+  });
+  return { snapUrl: fresh, filePath: currentImagePath };
+}
+
+/**
+ * Convert the currently-loaded video into a GIF using the standard
+ * palettegen / paletteuse two-pass method. Saves the GIF next to the
+ * original (same dir, .gif extension, name suffixed with -<n> if a file
+ * already exists with that name).
+ */
+export async function exportEditorAsGif(): Promise<{
+  filePath: string;
+  snapUrl: string;
+}> {
+  if (!currentImagePath) throw new Error('editor: gif export requested but no media loaded');
+  const kind = kindForPath(currentImagePath);
+  if (kind !== 'video') {
+    throw new Error(`editor: GIF export only works on videos, got kind=${kind}`);
+  }
+  const ffmpeg = ensureFfmpegAvailable();
+  const dir = dirname(currentImagePath);
+  const base = currentImagePath.replace(/\.(mp4|mov|m4v)$/i, '');
+  const outPath = `${base}.gif`;
+  const palettePath = join(tmpdir(), `snapora-export-palette-${Date.now()}.png`);
+  const filters = 'fps=15,scale=1280:-1:flags=lanczos';
+  const stages: { args: string[]; label: string }[] = [
+    {
+      args: [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-i',
+        currentImagePath,
+        '-vf',
+        `${filters},palettegen=stats_mode=diff`,
+        '-y',
+        palettePath,
+      ],
+      label: 'palettegen',
+    },
+    {
+      args: [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-i',
+        currentImagePath,
+        '-i',
+        palettePath,
+        '-filter_complex',
+        `${filters}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5`,
+        '-y',
+        outPath,
+      ],
+      label: 'paletteuse',
+    },
+  ];
+  for (const stage of stages) {
+    const ok = await new Promise<boolean>((resolve) => {
+      const proc = spawn(ffmpeg, stage.args, { stdio: 'ignore' });
+      proc.on('error', () => resolve(false));
+      proc.on('exit', (code) => resolve(code === 0));
+    });
+    if (!ok) {
+      void unlink(palettePath).catch(() => {});
+      throw new Error(`editor: gif export ${stage.label} failed`);
+    }
+  }
+  void unlink(palettePath).catch(() => {});
+  logger.info('editor: video exported as gif', { dir, outPath });
+  return { filePath: outPath, snapUrl: toSnapUrl(outPath) };
 }
 
 function cacheBust(url: string): string {

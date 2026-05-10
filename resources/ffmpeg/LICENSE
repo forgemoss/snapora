@@ -1,0 +1,17 @@
+FFmpeg is free software; you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License (LGPL) version 2.1 or (at your
+option) any later version.
+
+The full text of the LGPL 2.1 is available at:
+
+    https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
+
+The bundled binary is built from the FFmpeg sources at https://ffmpeg.org and
+distributed by https://evermeet.cx/ffmpeg/. The binary in this Snapora release
+matches the version + sha256 locked in `scripts/manifest.json`. Source for that
+exact build is available from the upstream maintainers.
+
+Snapora itself is MIT-licensed (see /LICENSE in the repository root). Snapora
+does not link against any FFmpeg sources at compile time; it spawns the bundled
+binary as a child process, the explicit redistribution model that the LGPL
+allows.
