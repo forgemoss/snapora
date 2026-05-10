@@ -4,67 +4,15 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { app, clipboard, nativeImage } from 'electron';
 import logger from '@main/logger';
+import { buildArgs } from '@main/capture/screenshotArgs';
 import { compositeWindowOnBackground } from '@main/capture/compositor';
 import { pickRegion } from '@main/selection/overlay';
 import { getPreferences } from '@main/storage/prefs';
 import { insertCapture } from '@main/storage/db';
 import { setDesktopIconsHidden } from '@main/system/desktopIcons';
-import type {
-  AppPreferences,
-  CaptureMode,
-  CaptureOptions,
-  CaptureResult,
-  SelectionRect,
-} from '@shared/types';
+import type { AppPreferences, CaptureOptions, CaptureResult } from '@shared/types';
 
 const SCREENCAPTURE_BIN = '/usr/sbin/screencapture';
-
-/**
- * Build the argv for /usr/sbin/screencapture.
- *
- * Reference: `man screencapture`. Flags we use:
- *   -i  interactive (mouse selection)
- *   -W  start in window-selection mode (only with -i)
- *   -R  rect x,y,w,h in DIPs (skips -i; we drove our own selection)
- *   -t  format (png|jpg|...)
- *   -o  do not include window shadow when in window mode
- *   -x  do not play sound
- *   -T  delay in seconds before capture (full-screen only)
- */
-export function buildArgs(
-  mode: CaptureMode,
-  format: 'png' | 'jpg',
-  delaySeconds: number,
-  outFile: string,
-  silent: boolean,
-  region?: SelectionRect,
-): string[] {
-  // -x silences the shutter sound; omit it when the user wants the sound.
-  const args: string[] = silent ? ['-x', '-t', format] : ['-t', format];
-
-  // When we already know the rect (from our overlay or "previous area"),
-  // -R replaces the interactive HUD entirely.
-  if (region) {
-    args.push('-R', `${region.x},${region.y},${region.width},${region.height}`);
-    args.push(outFile);
-    return args;
-  }
-
-  switch (mode) {
-    case 'area':
-      args.push('-i');
-      break;
-    case 'window':
-      args.push('-i', '-W', '-o');
-      break;
-    case 'fullscreen':
-      if (delaySeconds > 0) args.push('-T', String(delaySeconds));
-      break;
-  }
-
-  args.push(outFile);
-  return args;
-}
 
 function defaultSaveDir(): string {
   return join(app.getPath('pictures'), 'Snapora');
