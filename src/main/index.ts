@@ -22,8 +22,23 @@ if (process.platform === 'darwin') {
   app.dock?.hide();
 }
 
-// Menu-bar app stays running even when no windows are open. On macOS, that's
-// the default behavior already — we only need to handle this for Windows/Linux later.
+/*
+ * Keep Snapora alive when all BrowserWindows are gone.
+ *
+ * Electron's default behavior — even on macOS — is to quit when the last
+ * window closes. The `LSUIElement: true` Info.plist key only applies to
+ * packaged builds, not `npm run dev`. Without this handler, the app silently
+ * quits whenever the selection overlay closes before the HUD opens (the
+ * "first capture is area" crash). Snapora is a menu-bar app — the tray
+ * keeps it running; BrowserWindow count is allowed to drop to zero.
+ */
+app.on('window-all-closed', () => {
+  // No-op on macOS — keep running. Future Windows/Linux ports will likely
+  // want `app.quit()` here.
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
 
 app.on('will-quit', (event) => {
   unregisterGlobalShortcuts();
