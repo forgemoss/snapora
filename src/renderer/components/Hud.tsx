@@ -152,14 +152,6 @@ function Card({ card }: { card: HudCard }) {
           <Trash2 className="h-3 w-3" />
         </CornerButton>
 
-        <CornerButton
-          className="bottom-1.5 left-1.5"
-          label="Open in editor"
-          onClick={run('edit', () => window.snapora.hud.openCardInEditor(card.id))}
-        >
-          <Wand2 className="h-3 w-3" />
-        </CornerButton>
-
         {card.width && card.height ? (
           <div className="pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 font-mono text-[10px] text-white/80">
             {card.width} × {card.height}
@@ -194,6 +186,13 @@ function Card({ card }: { card: HudCard }) {
             disabled={pendingAction === 'save'}
           >
             Save
+          </PillButton>
+          <PillButton
+            icon={<Wand2 className="h-3 w-3" />}
+            onClick={run('edit', () => window.snapora.hud.openCardInEditor(card.id))}
+            disabled={pendingAction === 'edit'}
+          >
+            Edit
           </PillButton>
         </div>
       </div>

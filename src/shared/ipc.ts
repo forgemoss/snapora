@@ -46,6 +46,45 @@ export interface HudCard {
   capturedAt: string;
 }
 
+export type EditorAlignment =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'center-left'
+  | 'center'
+  | 'center-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
+/**
+ * Background config for the editor's "Background tool". Maps onto the
+ * shared `compositeWindowOnBackground` helper.
+ */
+export interface EditorBackgroundConfig {
+  /** `none` skips compositing — file stays as-is. */
+  type: 'none' | 'color' | 'image' | 'gradient';
+  /**
+   * - `color`: hex like `#0f172a`
+   * - `image`: absolute path
+   * - `gradient`: any valid CSS background-image (e.g. `linear-gradient(...)`)
+   */
+  value?: string;
+  /** DIPs of background visible around the captured image. */
+  paddingPx: number;
+  /** Drop-shadow strength in DIPs. 0 = no shadow. Default 30. */
+  shadowPx?: number;
+  /** Border-radius in DIPs on the captured image. 0 = use natural alpha shape. */
+  cornersPx?: number;
+  /** Where the captured image sits within the canvas. Default `center`. */
+  alignment?: EditorAlignment;
+}
+
+export interface EditorComposeResult {
+  /** Updated snap:// URL (cache-busted with `?v=`) for the renderer to reload. */
+  snapUrl: string;
+}
+
 /**
  * Centralized IPC channel names. Both sides import from here so a typo is a compile error.
  */
@@ -81,6 +120,14 @@ export const IPC = {
   editor: {
     onImageReady: 'editor:image-ready',
     requestCurrent: 'editor:request-current',
+    /**
+     * Re-composite the current image with a new background config.
+     * Replaces the file in place and returns the new snap:// URL (with a
+     * cache-busting suffix) so the renderer can refresh its <img>.
+     */
+    compose: 'editor:compose',
+    /** Open a file dialog and load the picked image into the editor. */
+    openFile: 'editor:open-file',
   },
   hud: {
     /** main → renderer: a fresh card just landed; full stack is sent. */
@@ -155,6 +202,13 @@ export interface SnaporaApi {
     onImageReady(handler: (snapUrl: string) => void): () => void;
     /** Returns the most recent image URL the main process has shown, or null. */
     requestCurrent(): Promise<string | null>;
+    /** Re-composite the current image and replace it on disk. */
+    compose(config: EditorBackgroundConfig): Promise<EditorComposeResult>;
+    /**
+     * Open a file dialog and load the picked image into the editor.
+     * Returns the new snap:// URL, or null if the user cancelled.
+     */
+    openFile(): Promise<string | null>;
   };
   hud: {
     /** Subscribe to stack pushes. Handler receives the full updated stack. */

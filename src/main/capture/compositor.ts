@@ -3,10 +3,26 @@ import { readFile, writeFile } from 'node:fs/promises';
 import logger from '@main/logger';
 
 export interface CompositeBackground {
-  type: 'image' | 'color';
-  /** When `type === 'image'`, absolute path. When `type === 'color'`, hex like `#0f172a`. */
+  type: 'image' | 'color' | 'gradient';
+  /**
+   * - `color`: hex like `#0f172a`
+   * - `image`: absolute path
+   * - `gradient`: any valid CSS background-image value, e.g.
+   *   `linear-gradient(135deg, #ff6b6b, #f7931e)`
+   */
   value: string;
 }
+
+export type CompositeAlignment =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'center-left'
+  | 'center'
+  | 'center-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
 
 export interface CompositeOptions {
   /** Path to the raw window screenshot from `screencapture -W -o`. */
@@ -17,10 +33,36 @@ export interface CompositeOptions {
   background: CompositeBackground;
   /** DIPs of empty space between the window edge and the canvas edge. */
   paddingPx: number;
+  /** Drop-shadow strength in DIPs. Default 30. Set 0 for no shadow. */
+  shadowPx?: number;
+  /** Border-radius in DIPs applied to the captured image. Default 0 (use the image's natural alpha shape). */
+  cornersPx?: number;
+  /** Where the captured image sits within the canvas. Default `center`. */
+  alignment?: CompositeAlignment;
 }
 
 const COMPOSITE_TIMEOUT_MS = 8_000;
-const SHADOW_PX = 30; // dropped behind the window — visually closer to CleanShot's default
+const DEFAULT_SHADOW_PX = 30;
+
+/**
+ * Alignment slides the image toward an edge by *doubling padding on the
+ * opposite side* (rather than introducing a separate aspect-ratio
+ * concept). e.g. `bottom-right` → top + left get 2× padding.
+ */
+export function paddingForAlignment(
+  alignment: CompositeAlignment,
+  base: number,
+): { top: number; right: number; bottom: number; left: number } {
+  let top = base;
+  let right = base;
+  let bottom = base;
+  let left = base;
+  if (alignment.startsWith('top')) bottom = base * 2;
+  else if (alignment.startsWith('bottom')) top = base * 2;
+  if (alignment.endsWith('right')) left = base * 2;
+  else if (alignment.endsWith('left')) right = base * 2;
+  return { top, right, bottom, left };
+}
 
 /**
  * Composite a captured window onto a chosen background using a hidden
@@ -38,27 +80,23 @@ export async function compositeWindowOnBackground(opts: CompositeOptions): Promi
     throw new Error(`compositor: empty image at ${opts.inputPath}`);
   }
   const winSize = inputImg.getSize();
-  const outW = winSize.width + 2 * opts.paddingPx;
-  const outH = winSize.height + 2 * opts.paddingPx;
+  const padding = paddingForAlignment(opts.alignment ?? 'center', opts.paddingPx);
+  const outW = winSize.width + padding.left + padding.right;
+  const outH = winSize.height + padding.top + padding.bottom;
 
   // Load both images as data URLs so the renderer can show them without
   // worrying about file:// + CSP.
   const winDataUrl = `data:image/png;base64,${(await readFile(opts.inputPath)).toString('base64')}`;
-  let bgCss: string;
-  if (opts.background.type === 'color') {
-    bgCss = opts.background.value;
-  } else {
-    const bgBuf = await readFile(opts.background.value);
-    const bgB64 = bgBuf.toString('base64');
-    // Trust file extension — these come from the OS file dialog.
-    const ext = opts.background.value.split('.').pop()?.toLowerCase() ?? 'png';
-    const mime = ext === 'jpg' || ext === 'jpeg' ? 'jpeg' : ext === 'heic' ? 'heic' : 'png';
-    bgCss = `center / cover no-repeat url("data:image/${mime};base64,${bgB64}")`;
-  }
+  const bgCss = await resolveBackgroundCss(opts.background);
+
+  const shadowPx = opts.shadowPx ?? DEFAULT_SHADOW_PX;
+  const cornersPx = opts.cornersPx ?? 0;
 
   const html = buildHtml({
     bgCss,
-    paddingPx: opts.paddingPx,
+    padding,
+    shadowPx,
+    cornersPx,
     winSize,
     outSize: { w: outW, h: outH },
     winDataUrl,
@@ -98,12 +136,31 @@ export async function compositeWindowOnBackground(opts: CompositeOptions): Promi
       input: opts.inputPath,
       output: opts.outputPath,
       bgType: opts.background.type,
-      paddingPx: opts.paddingPx,
+      basePaddingPx: opts.paddingPx,
+      padding,
+      shadowPx,
+      cornersPx,
+      alignment: opts.alignment ?? 'center',
       outSize: `${outW}x${outH}`,
     });
   } finally {
     if (!win.isDestroyed()) win.destroy();
   }
+}
+
+async function resolveBackgroundCss(bg: CompositeBackground): Promise<string> {
+  if (bg.type === 'color') {
+    return bg.value;
+  }
+  if (bg.type === 'gradient') {
+    return bg.value;
+  }
+  // type === 'image'
+  const bgBuf = await readFile(bg.value);
+  const bgB64 = bgBuf.toString('base64');
+  const ext = bg.value.split('.').pop()?.toLowerCase() ?? 'png';
+  const mime = ext === 'jpg' || ext === 'jpeg' ? 'jpeg' : ext === 'heic' ? 'heic' : 'png';
+  return `center / cover no-repeat url("data:image/${mime};base64,${bgB64}")`;
 }
 
 function loadWithTimeout(win: BrowserWindow, html: string): Promise<void> {
@@ -126,11 +183,26 @@ function loadWithTimeout(win: BrowserWindow, html: string): Promise<void> {
 
 function buildHtml(args: {
   bgCss: string;
-  paddingPx: number;
+  padding: { top: number; right: number; bottom: number; left: number };
+  shadowPx: number;
+  cornersPx: number;
   winSize: { width: number; height: number };
   outSize: { w: number; h: number };
   winDataUrl: string;
 }): string {
+  // For solid colors (and gradients which are also background-image), we
+  // need to use `background:` shorthand. CSS handles both.
+  const shadow =
+    args.shadowPx > 0
+      ? `filter: drop-shadow(0 ${Math.round(args.shadowPx / 2)}px ${args.shadowPx}px rgba(0, 0, 0, 0.45));`
+      : '';
+  // When the user picks rounded corners, wrap the image in a clipping div.
+  // The captured PNG's own alpha (rounded macOS window corners) sits
+  // inside the rounded clip — for area screenshots this is what produces
+  // the visible rounded corner.
+  const clipStyles =
+    args.cornersPx > 0 ? `border-radius: ${args.cornersPx}px; overflow: hidden; ${shadow}` : shadow;
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -144,9 +216,13 @@ function buildHtml(args: {
     width: ${args.outSize.w}px;
     height: ${args.outSize.h}px;
     background: ${args.bgCss};
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    /*
+     * Padding handles alignment (asymmetric values shift the image toward
+     * one corner) so we leave display:block here — the .clip is
+     * absolutely positioned by the asymmetric padding.
+     */
+    padding: ${args.padding.top}px ${args.padding.right}px ${args.padding.bottom}px ${args.padding.left}px;
+    box-sizing: border-box;
   }
   /*
    * The captured PNG already has the window's native rounded corners
@@ -154,17 +230,21 @@ function buildHtml(args: {
    * shadow follows the real alpha shape — box-shadow on a rectangular
    * wrapper would draw a square shadow ignoring the corners.
    */
-  img {
-    display: block;
+  .clip {
     width: ${args.winSize.width}px;
     height: ${args.winSize.height}px;
-    filter: drop-shadow(0 ${Math.round(SHADOW_PX / 2)}px ${SHADOW_PX}px rgba(0, 0, 0, 0.45));
+    ${clipStyles}
+  }
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 </style>
 </head>
 <body>
   <div class="canvas">
-    <img src="${args.winDataUrl}">
+    <div class="clip"><img src="${args.winDataUrl}"></div>
   </div>
 </body>
 </html>`;

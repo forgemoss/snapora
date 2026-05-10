@@ -8,7 +8,13 @@ import type {
   PermissionState,
   SelectionRect,
 } from '@shared/types';
-import type { HudCard, SelectionInitPayload, SnaporaApi } from '@shared/ipc';
+import type {
+  EditorBackgroundConfig,
+  EditorComposeResult,
+  HudCard,
+  SelectionInitPayload,
+  SnaporaApi,
+} from '@shared/ipc';
 
 const api: SnaporaApi = {
   capture: (options: CaptureOptions): Promise<CaptureResult> =>
@@ -54,6 +60,9 @@ const api: SnaporaApi = {
       return () => ipcRenderer.removeListener(IPC.editor.onImageReady, listener);
     },
     requestCurrent: (): Promise<string | null> => ipcRenderer.invoke(IPC.editor.requestCurrent),
+    compose: (config: EditorBackgroundConfig): Promise<EditorComposeResult> =>
+      ipcRenderer.invoke(IPC.editor.compose, config),
+    openFile: (): Promise<string | null> => ipcRenderer.invoke(IPC.editor.openFile),
   },
   hud: {
     onStack: (handler: (cards: HudCard[]) => void) => {

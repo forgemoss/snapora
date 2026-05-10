@@ -5,7 +5,11 @@ import { listPermissions, openSystemSettingsFor, requestPermission } from '@main
 import { syncLoginItem } from '@main/storage/loginItem';
 import { getPreferences, setPreferences } from '@main/storage/prefs';
 import { setDesktopIconsHidden } from '@main/system/desktopIcons';
-import { getCurrentEditorImageUrl } from '@main/windows/editor';
+import {
+  composeEditorImage,
+  getCurrentEditorImageUrl,
+  openFileInEditor,
+} from '@main/windows/editor';
 import { showHudWithImage } from '@main/windows/hud';
 import { markFirstRunDone, relaunchApp } from '@main/windows/firstRun';
 import { chooseSaveDirectory, chooseWallpaperImage } from '@main/windows/settings';
@@ -13,7 +17,7 @@ import { registerHistoryHandlers } from '@main/ipc/historyHandlers';
 import { registerSelectionHandlers } from '@main/selection/overlay';
 import { registerGlobalShortcuts } from '@main/shortcuts/index';
 import { registerHudHandlers } from '@main/ipc/hudHandlers';
-import { IPC } from '@shared/ipc';
+import { IPC, type EditorBackgroundConfig } from '@shared/ipc';
 import type { AppPreferences, CaptureOptions, Permission } from '@shared/types';
 
 export function registerIpcHandlers(): void {
@@ -58,6 +62,10 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle(IPC.editor.requestCurrent, () => getCurrentEditorImageUrl());
+  ipcMain.handle(IPC.editor.compose, (_evt, config: EditorBackgroundConfig) =>
+    composeEditorImage(config),
+  );
+  ipcMain.handle(IPC.editor.openFile, () => openFileInEditor());
 
   registerHudHandlers();
   registerHistoryHandlers();
